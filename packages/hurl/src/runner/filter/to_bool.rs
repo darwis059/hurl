@@ -28,13 +28,13 @@ pub fn eval_to_bool(
     match value {
         Value::Number(Number::Integer(v)) => Ok(Some(Value::Bool(*v > 0))),
         // Value::Number(Number::Float(v)) => Ok(Some(Value::Number(Number::Integer(*v as i64)))),
-        // Value::String(v) => match v.parse::<i64>() {
-        //     Ok(i) => Ok(Some(Value::Bool(Number::Integer(i) > 0))),
-        //     _ => {
-        //         let kind = RunnerErrorKind::FilterInvalidInput(value.repr());
-        //         Err(RunnerError::new(source_info, kind, assert))
-        //     }
-        // },
+        Value::String(v) => match v.parse::<i64>() {
+            Ok(i) => Ok(Some(Value::Bool(i > 0))),
+            _ => {
+                let kind = RunnerErrorKind::FilterInvalidInput(value.repr());
+                Err(RunnerError::new(source_info, kind, assert))
+            }
+        },
         v => {
             let kind = RunnerErrorKind::FilterInvalidInput(v.repr());
             Err(RunnerError::new(source_info, kind, assert))
