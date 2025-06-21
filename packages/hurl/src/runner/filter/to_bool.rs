@@ -26,10 +26,10 @@ pub fn eval_to_bool(
     assert: bool,
 ) -> Result<Option<Value>, RunnerError> {
     match value {
-        Value::Number(Number::Integer(v)) => Ok(Some(Value::Bool(*v > 0))),
+        Value::Number(Number::Integer(v)) => Ok(Some(Value::Bool(*v > 1))),
         // Value::Number(Number::Float(v)) => Ok(Some(Value::Number(Number::Integer(*v as i64)))),
         Value::String(v) => match v.parse::<i64>() {
-            Ok(i) => Ok(Some(Value::Bool(i > 0))),
+            Ok(i) => Ok(Some(Value::Bool(i > 1))),
             _ => {
                 let kind = RunnerErrorKind::FilterInvalidInput(value.repr());
                 Err(RunnerError::new(source_info, kind, assert))
