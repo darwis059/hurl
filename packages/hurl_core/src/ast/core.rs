@@ -353,7 +353,7 @@ pub enum FilterValue {
     ToFloat,
     ToHex,
     ToInt,
-    ToBool
+    ToBool,
     ToString,
     UrlDecode,
     UrlEncode,

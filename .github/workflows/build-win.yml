@@ -1,4 +1,4 @@
-name: package
+name: package-drw
 
 on:
   # pull_request:
