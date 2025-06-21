@@ -45,6 +45,7 @@ mod to_date;
 mod to_float;
 mod to_hex;
 mod to_int;
+mod to_bool;
 mod to_string;
 mod url_decode;
 mod url_encode;
