@@ -77,6 +77,7 @@ pub fn filter(reader: &mut Reader) -> ParseResult<Filter> {
             to_float_filter,
             to_hex_filter,
             to_int_filter,
+            to_bool_filter,
             to_string_filter,
             url_decode_filter,
             url_encode_filter,
