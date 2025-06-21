@@ -1,8 +1,8 @@
 name: update-crates
 
 on:
-  schedule:
-    - cron: "0 3 * * *"
+  # schedule:
+  #   - cron: "0 3 * * *"
   workflow_dispatch:
 
 concurrency: update-crates-${{ github.ref }}
@@ -13,7 +13,7 @@ jobs:
       GITHUB_CONTEXT: ${{ toJson(github) }}
       GITHUB_TOKEN: ${{ secrets.HURL_BOT_TOKEN }}
       REPO: ${{ github.repository }}
-      BOT_UPDATE_BRANCH_NAME: "bot/update-crates"
+      BOT_UPDATE_BRANCH_NAME: 'bot/update-crates'
     name: update-crates
     runs-on: ubuntu-latest
     steps:
@@ -72,8 +72,8 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.HURL_BOT_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.HURL_BOT_GPG_PRIVATE_KEY_PASSPHRASE }}
-          git_committer_name: "hurl-bot"
-          git_committer_email: "bot@hurl.dev"
+          git_committer_name: 'hurl-bot'
+          git_committer_email: 'bot@hurl.dev'
           git_user_signingkey: true
           git_commit_gpgsign: true
 

@@ -475,6 +475,7 @@ pub fn walk_filter<V: Visitor>(visitor: &mut V, filter: &Filter) {
         FilterValue::ToFloat => {}
         FilterValue::ToHex => {}
         FilterValue::ToInt => {}
+        FilterValue::ToBool => {}
         FilterValue::UrlDecode => {}
         FilterValue::UrlEncode => {}
         FilterValue::XPath { space0, expr } => {

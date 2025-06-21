@@ -353,6 +353,7 @@ pub enum FilterValue {
     ToFloat,
     ToHex,
     ToInt,
+    ToBool
     ToString,
     UrlDecode,
     UrlEncode,
@@ -394,6 +395,7 @@ impl FilterValue {
             FilterValue::ToFloat => "toFloat",
             FilterValue::ToHex => "toHex",
             FilterValue::ToInt => "toInt",
+            FilterValue::ToBool => "toBool",
             FilterValue::ToString => "toString",
             FilterValue::UrlDecode => "urlDecode",
             FilterValue::UrlEncode => "urlEncode",

@@ -255,6 +255,11 @@ fn to_int_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     Ok(FilterValue::ToInt)
 }
 
+fn to_bool_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("toBool", reader)?;
+    Ok(FilterValue::ToBool)
+}
+
 fn to_string_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     try_literal("toString", reader)?;
     Ok(FilterValue::ToString)

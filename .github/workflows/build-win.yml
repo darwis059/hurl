@@ -1,0 +1,121 @@
+name: package
+
+on:
+  # pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'ref branch for this workflow'
+        default: 'master'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions: {}
+
+jobs:
+  # package-generic-linux-x64:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         persist-credentials: false
+  #         ref: ${{ inputs.branch }}
+  #     - name: Install prerequisites
+  #       run: bin/install_prerequisites_ubuntu.sh
+  #     - name: Install Python 3.11
+  #       uses: actions/setup-python@v5.6.0
+  #       with:
+  #         python-version: '3.11'
+  #     - name: Activate python3 venv
+  #       run: |
+  #         bin/activate_python3_venv.sh
+  #         export PATH="/tmp/hurl-python3-venv/bin:$PATH"
+  #         echo "PATH=$PATH" >> $GITHUB_ENV
+  #         which python3
+  #         python3 --version
+  #         pip --version
+  #     - name: Environment
+  #       run: bin/environment.sh
+  #     - name: Install rust
+  #       run: bin/install_rust.sh
+  #     - name: Build
+  #       run: |
+  #         bin/release/release.sh
+  #         echo "PATH=:${PWD}/target/release:$PATH" >> "${GITHUB_ENV}"
+  #     - name: Get version
+  #       run: |
+  #         VERSION=$(bin/release/get_version.sh)
+  #         echo "VERSION=${VERSION}" | tee -a "${GITHUB_ENV}"
+  #     - name: Create generic linux package
+  #       run: |
+  #         bin/release/man.sh
+  #         bin/release/create_tarball.sh
+  #     - name: Archive production artifacts
+  #       uses: actions/upload-artifact@v4.6.2
+  #       with:
+  #         name: release-generic-linux-x64-artifacts
+  #         path: target/upload/*
+
+  package-windows-x64:
+    runs-on: windows-latest
+    env:
+      VCPKGRS_DYNAMIC: 1
+    steps:
+      - name: Set git to use LF
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.branch }}
+      - name: Install Rust
+        run: |
+          .\bin\install_rust.ps1
+      - name: Manage vcpkg cache
+        uses: actions/cache@v4.2.3
+        with:
+          path: C:\vcpkg
+          key: ${{ runner.os }}-release-windows-x64
+      - name: Install prerequisites
+        run: .\bin\install_prerequisites_windows.ps1
+      - name: Install Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Environment
+        run: |
+          .\bin\activate_python3_venv.ps1
+          .\bin\environment.ps1
+      - name: Build
+        run: .\bin\release\release.ps1
+      - name: Create windows64 Zip package
+        run: .\bin\release\create_windows64_zip_package.ps1
+      # - name: Install win64 zip and test integ
+      #   run: |
+      #     .\bin\release\install_windows64_zip_package.ps1
+      #     .\bin\activate_python3_venv.ps1
+      #     .\bin\test\test_prerequisites.ps1
+      #     .\bin\test\test_integ.ps1
+      # - name: Create windows64 installer
+      #   run: .\bin\release\create_windows64_installer.ps1
+      # - name: Install win64 installer and test integ
+      #   run: |
+      #     .\bin\release\install_windows64_installer.ps1
+      #     .\bin\activate_python3_venv.ps1
+      #     .\bin\test\test_prerequisites.ps1
+      #     .\bin\test\test_integ.ps1
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: release-windows-x64-artifacts
+          path: |
+            .\target\win-package\hurl-*.zip
+
+      # .\target\win-package\hurl-*-installer.exe
