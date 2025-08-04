@@ -279,6 +279,7 @@ pub fn interactive() -> clap::Arg {
         .help_heading("Run options")
         .conflicts_with("to_entry")
         .action(clap::ArgAction::SetTrue)
+        .hide(true)
 }
 
 pub fn ipv4() -> clap::Arg {
@@ -304,7 +305,7 @@ pub fn jobs() -> clap::Arg {
         .long("jobs")
         .value_name("NUM")
         .value_parser(clap::value_parser!(u32).range(1..))
-        .help("Maximum number of parallel jobs")
+        .help("Maximum number of parallel jobs, 0 to disable parallel execution")
         .help_heading("Run options")
         .num_args(1)
 }
@@ -357,6 +358,14 @@ pub fn max_time() -> clap::Arg {
         .help("Maximum time allowed for the transfer [default: 300]")
         .help_heading("HTTP options")
         .num_args(1)
+}
+
+pub fn negotiate() -> clap::Arg {
+    clap::Arg::new("negotiate")
+        .long("negotiate")
+        .help("Tell Hurl to use Negotiate (SPNEGO) authentication")
+        .help_heading("HTTP options")
+        .action(clap::ArgAction::SetTrue)
 }
 
 pub fn netrc() -> clap::Arg {
@@ -414,6 +423,14 @@ pub fn noproxy() -> clap::Arg {
         .help("List of hosts which do not use proxy")
         .help_heading("HTTP options")
         .num_args(1)
+}
+
+pub fn ntlm() -> clap::Arg {
+    clap::Arg::new("ntlm")
+        .long("ntlm")
+        .help("Tell Hurl to use NTLM authentication")
+        .help_heading("HTTP options")
+        .action(clap::ArgAction::SetTrue)
 }
 
 pub fn output() -> clap::Arg {

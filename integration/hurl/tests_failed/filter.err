@@ -4,7 +4,7 @@ error: Filter error
    | GET http://localhost:8000/error-filter
    | ...
  4 | jsonpath "$.file" base64Decode == hex,e4bda0e5a5bde4b896e7;
-   |                   ^^^^^^^^^^^^ invalid filter input: Invalid base64 string
+   |                   ^^^^^^^^^^^^ invalid filter input: string is not base64
    |
 
 error: Filter error
@@ -31,17 +31,16 @@ error: Filter error
    | GET http://localhost:8000/error-filter
    | ...
  7 | jsonpath "$.file" base64UrlSafeDecode == hex,e4bda0e5a5bde4b896e7;
-   |                   ^^^^^^^^^^^^^^^^^^^ invalid filter input: Invalid base64 string
+   |                   ^^^^^^^^^^^^^^^^^^^ invalid filter input: string is not base64
    |
 
-error: Assert failure
-  --> tests_failed/filter.hurl:8:0
+error: Filter error
+  --> tests_failed/filter.hurl:8:28
    |
    | GET http://localhost:8000/error-filter
    | ...
- 8 | jsonpath "$.text_encoded" base64UrlSafeDecode == hex,e4bda0e5a5bde4b896e7;
-   |   actual:   bytes <3c3c3f3f3f3e3e>
-   |   expected: bytes <e4bda0e5a5bde4b896e7>
+ 8 | jsonpath "$.base64_string" base64UrlSafeDecode == hex,e4bda0e5a5bde4b896e7;
+   |                            ^^^^^^^^^^^^^^^^^^^ invalid filter input: base64 string contains padding
    |
 
 error: Filter error
@@ -104,7 +103,7 @@ error: Filter error
    | GET http://localhost:8000/error-filter
    | ...
 15 | jsonpath "$.empty_list" first == "1"
-   |                         ^^^^^ invalid filter input: List is empty
+   |                         ^^^^^ invalid filter input: list is empty
    |
 
 error: Filter error
@@ -113,7 +112,7 @@ error: Filter error
    | GET http://localhost:8000/error-filter
    | ...
 16 | jsonpath "$.empty_list" last == "x"
-   |                         ^^^^ invalid filter input: List is empty
+   |                         ^^^^ invalid filter input: list is empty
    |
 
 error: Filter error
@@ -140,7 +139,7 @@ error: Filter error
    | GET http://localhost:8000/error-filter
    | ...
 19 | jsonpath "$.list" nth 5 == 3
-   |                   ^^^^^ invalid filter input: Out of bound - size is 3
+   |                   ^^^^^ invalid filter input: out of bound - size is 3
    |
 
 error: Filter error
@@ -207,21 +206,21 @@ error: Filter error
    |
 
 error: Filter error
-  --> tests_failed/filter.hurl:27:21
+  --> tests_failed/filter.hurl:27:22
    |
    | GET http://localhost:8000/error-filter
    | ...
-27 | jsonpath "$.number" jsonpath "$.name" == "help"
-   |                     ^^^^^^^^^^^^^^^^^ invalid filter input: integer
+27 | regex /(.*number.*)/ jsonpath "$.name" == "help"
+   |                      ^^^^^^^^^^^^^^^^^ invalid filter input: value is not a valid JSON
    |
 
-error: Invalid JSON
-  --> tests_failed/filter.hurl:28:17
+error: Filter error
+  --> tests_failed/filter.hurl:28:7
    |
    | GET http://localhost:8000/error-filter
    | ...
-28 | jsonpath "$.id" jsonpath "$.name" == "help"
-   |                 ^^^^^^^^^^^^^^^^^ the HTTP response is not a valid JSON
+28 | bytes jsonpath "$.name" == "help"
+   |       ^^^^^^^^^^^^^^^^^ invalid filter input: bytes
    |
 
 error: Filter error
@@ -239,7 +238,7 @@ error: Filter error
    | GET http://localhost:8000/error-filter
    | ...
 30 | jsonpath "$.list" nth -4 == 123
-   |                   ^^^^^^ invalid filter input: Out of bound - size is 3
+   |                   ^^^^^^ invalid filter input: out of bound - size is 3
    |
 
 error: Filter error
@@ -265,8 +264,8 @@ error: Filter error
    |
    | GET http://localhost:8000/error-filter
    | ...
-33 | jsonpath "$.number" split ", " count == 3
-   |                     ^^^^^^^^^^ invalid filter input: integer <42>
+33 | jsonpath "$.number" replaceRegex /\d/ "x" == "xxx.xxx.x.x,xx.x.x.xx|xx.x.x.xx"
+   |                     ^^^^^^^^^^^^^^^^^^^^^ invalid filter input: integer <42>
    |
 
 error: Filter error
@@ -274,8 +273,8 @@ error: Filter error
    |
    | GET http://localhost:8000/error-filter
    | ...
-34 | jsonpath "$.number" toDate "%Y-%m-%dT%H:%M:%S%.fZ" format "%A" == "Monday"
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid filter input: integer <42>
+34 | jsonpath "$.number" split ", " count == 3
+   |                     ^^^^^^^^^^ invalid filter input: integer <42>
    |
 
 error: Filter error
@@ -283,8 +282,8 @@ error: Filter error
    |
    | GET http://localhost:8000/error-filter
    | ...
-35 | jsonpath "$.number" urlDecode == "https://mozilla.org/?x=шеллы"
-   |                     ^^^^^^^^^ invalid filter input: integer
+35 | jsonpath "$.number" toDate "%Y-%m-%dT%H:%M:%S%.fZ" format "%A" == "Monday"
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid filter input: integer <42>
    |
 
 error: Filter error
@@ -292,7 +291,7 @@ error: Filter error
    |
    | GET http://localhost:8000/error-filter
    | ...
-36 | jsonpath "$.number" urlEncode == "https%3A//mozilla.org/%3Fx%3D%D1%88%D0%B5%D0%BB%D0%BB%D1%8B"
+36 | jsonpath "$.number" urlDecode == "https://mozilla.org/?x=шеллы"
    |                     ^^^^^^^^^ invalid filter input: integer
    |
 
@@ -301,8 +300,8 @@ error: Filter error
    |
    | GET http://localhost:8000/error-filter
    | ...
-37 | jsonpath "$.number" urlQueryParam "x" == "шеллы"
-   |                     ^^^^^^^^^^^^^^^^^ invalid filter input: integer
+37 | jsonpath "$.number" urlEncode == "https%3A//mozilla.org/%3Fx%3D%D1%88%D0%B5%D0%BB%D0%BB%D1%8B"
+   |                     ^^^^^^^^^ invalid filter input: integer
    |
 
 error: Filter error
@@ -310,16 +309,88 @@ error: Filter error
    |
    | GET http://localhost:8000/error-filter
    | ...
-38 | jsonpath "$.number" xpath "string(//body)" == "你好世界"
+38 | jsonpath "$.number" urlQueryParam "x" == "шеллы"
+   |                     ^^^^^^^^^^^^^^^^^ invalid filter input: integer
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:39:21
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+39 | jsonpath "$.number" xpath "string(//body)" == "你好世界"
    |                     ^^^^^^^^^^^^^^^^^^^^^^ invalid filter input: integer
    |
 
 error: Filter error
-  --> tests_failed/filter.hurl:39:19
+  --> tests_failed/filter.hurl:40:19
    |
    | GET http://localhost:8000/error-filter
    | ...
-39 | jsonpath "$.list" toString == "[]"
+40 | jsonpath "$.list" toString == "[]"
    |                   ^^^^^^^^ invalid filter input: list <[1,2,3]> can not be converted to a string
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:41:26
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+41 | jsonpath "$.invalid_xml" xpath "normalize-space(//book)" == "foo"
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid filter input: value is not a valid XML
+   |
+
+error: Invalid URL
+  --> tests_failed/filter.hurl:42:17
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+42 | jsonpath "$.id" urlQueryParam "q" == "something"
+   |                 ^^^^^^^^^^^^^^^^^ invalid URL <123x> (Missing scheme <http://> or <https://>)
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:43:50
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+43 | jsonpath "$.date" toDate "%Y-%m-%dT%H:%M:%S%.fZ" format "%👻" == "Monday"
+   |                                                  ^^^^^^^^^^^ date format <%👻> is not supported
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:44:22
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+44 | jsonpath "$.big_int" toFloat == 10000000000000000365.0
+   |                      ^^^^^^^ invalid filter input: integer <10000000000000000365> is too big to be cast as a float
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:45:17
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+45 | jsonpath "$.id" toFloat == 1.23
+   |                 ^^^^^^^ invalid filter input: string <123x>
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:46:31
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+46 | jsonpath "$.date" toDate "%+" toFloat == 3.14
+   |                               ^^^^^^^ invalid filter input: date <2023-01-23 18:25:43.511 UTC>
+   |
+
+error: Filter error
+  --> tests_failed/filter.hurl:52:24
+   |
+   | GET http://localhost:8000/error-filter
+   | ...
+52 | foo: jsonpath "$.list" jsonpath "$.foo"
+   |                        ^^^^^^^^^^^^^^^^ invalid filter input: list
    |
 

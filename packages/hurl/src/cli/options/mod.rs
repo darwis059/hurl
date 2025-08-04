@@ -78,10 +78,12 @@ pub struct CliOptions {
     pub limit_rate: Option<BytesPerSec>,
     pub max_filesize: Option<u64>,
     pub max_redirect: Count,
+    pub negotiate: bool,
     pub netrc: bool,
     pub netrc_file: Option<String>,
     pub netrc_optional: bool,
     pub no_proxy: Option<String>,
+    pub ntlm: bool,
     pub output: Option<Output>,
     pub output_type: OutputType,
     pub parallel: bool,
@@ -210,7 +212,9 @@ pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
         .arg(commands::max_filesize())
         .arg(commands::max_redirects())
         .arg(commands::max_time())
+        .arg(commands::negotiate())
         .arg(commands::noproxy())
+        .arg(commands::ntlm())
         .arg(commands::path_as_is())
         .arg(commands::pinned_pub_key())
         .arg(commands::proxy())
@@ -324,10 +328,12 @@ fn parse_matches(
     let limit_rate = matches::limit_rate(arg_matches);
     let max_filesize = matches::max_filesize(arg_matches);
     let max_redirect = matches::max_redirect(arg_matches);
+    let negotiate = matches::negotiate(arg_matches);
     let netrc = matches::netrc(arg_matches);
     let netrc_file = matches::netrc_file(arg_matches)?;
     let netrc_optional = matches::netrc_optional(arg_matches);
     let no_proxy = matches::no_proxy(arg_matches);
+    let ntlm = matches::ntlm(arg_matches);
     let parallel = matches::parallel(arg_matches);
     let path_as_is = matches::path_as_is(arg_matches);
     let pinned_pub_key = matches::pinned_pub_key(arg_matches);
@@ -384,10 +390,12 @@ fn parse_matches(
         limit_rate,
         max_filesize,
         max_redirect,
+        negotiate,
         netrc,
         netrc_file,
         netrc_optional,
         no_proxy,
+        ntlm,
         path_as_is,
         pinned_pub_key,
         parallel,
@@ -488,6 +496,8 @@ impl CliOptions {
         let retry = self.retry;
         let retry_interval = self.retry_interval;
         let ssl_no_revoke = self.ssl_no_revoke;
+        let negotiate = self.negotiate;
+        let ntlm = self.ntlm;
         let timeout = self.timeout;
         let to_entry = self.to_entry;
         let unix_socket = self.unix_socket.clone();
@@ -518,10 +528,12 @@ impl CliOptions {
             .max_recv_speed(max_recv_speed)
             .max_redirect(max_redirect)
             .max_send_speed(max_send_speed)
+            .negotiate(negotiate)
             .netrc(netrc)
             .netrc_file(netrc_file)
             .netrc_optional(netrc_optional)
             .no_proxy(no_proxy)
+            .ntlm(ntlm)
             .output(output)
             .path_as_is(path_as_is)
             .pinned_pub_key(pinned_pub_key)

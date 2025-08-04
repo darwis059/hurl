@@ -323,7 +323,7 @@ impl ParallelRunner {
                         append,
                     );
                     if let Err(e) = result {
-                        let message = e.to_string(
+                        let message = e.render(
                             &filename_in.to_string(),
                             content,
                             None,
@@ -342,8 +342,8 @@ impl ParallelRunner {
                     stdout,
                     append,
                 );
-                if let Err(eroor) = result {
-                    return Err(JobError::OutputWrite(eroor.to_string()));
+                if let Err(error) = result {
+                    return Err(JobError::OutputWrite(error.to_string()));
                 }
             }
             OutputType::NoOutput => {}

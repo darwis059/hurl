@@ -132,7 +132,7 @@ fn print_output(
             append,
         );
         if let Err(e) = result {
-            return Err(CliError::OutputWrite(e.to_string(
+            return Err(CliError::OutputWrite(e.render(
                 &filename.to_string(),
                 content,
                 None,
@@ -155,7 +155,7 @@ fn print_output(
             } else {
                 "stdout".to_string()
             };
-            let message = format!("{filename} can not be written ({})", e);
+            let message = format!("{filename} can not be written ({e})");
             return Err(CliError::OutputWrite(message));
         }
     }

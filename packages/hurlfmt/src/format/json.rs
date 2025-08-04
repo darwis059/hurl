@@ -568,7 +568,8 @@ impl ToJson for Predicate {
             | PredicateFuncValue::IsEmpty
             | PredicateFuncValue::IsNumber
             | PredicateFuncValue::IsIpv4
-            | PredicateFuncValue::IsIpv6 => {}
+            | PredicateFuncValue::IsIpv6
+            | PredicateFuncValue::IsUuid => {}
         }
         JValue::Object(attributes)
     }
@@ -704,7 +705,7 @@ impl ToJson for FilterValue {
 
 impl ToJson for Placeholder {
     fn to_json(&self) -> JValue {
-        JValue::String(format!("{{{{{}}}}}", self))
+        JValue::String(format!("{{{{{self}}}}}"))
     }
 }
 

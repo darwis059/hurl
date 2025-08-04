@@ -1,4 +1,4 @@
-[7.0.0 (TBD)](https://github.com/Orange-OpenSource/hurl/blob/master/CHANGELOG.md#7.0.0)
+[7.0.0 (2025-07-28)](https://github.com/Orange-OpenSource/hurl/blob/master/CHANGELOG.md#7.0.0)
 ========================================================================================================================
 
 Thanks to
@@ -12,10 +12,15 @@ Thanks to
 [@benkio](https://github.com/benkio),
 [@dhth](https://github.com/dhth),
 [@verigak](https://github.com/verigak),
+[@markphilpot](https://github.com/markphilpot),
 [@lambrospetrou](https://github.com/lambrospetrou),
+[@aresler](https://github.com/aresler),
 [@nfj25](https://github.com/nfj25),
 [@nwellnhof](https://github.com/nwellnhof),
 [@YannickAlex07](https://github.com/YannickAlex07),
+[@lu-zero](https://github.com/lu-zero),
+[@RaghavSood](https://github.com/RaghavSood),
+[@tjbrockmeyer](https://github.com/tjbrockmeyer),
 
 Breaking Changes:
 
@@ -26,10 +31,12 @@ Enhancements:
 
 * Add query for HTTP redirects [#922](https://github.com/Orange-OpenSource/hurl/issues/922)
 * Add urlQueryParam filter [#2199](https://github.com/Orange-OpenSource/hurl/issues/2199)
+* Show curl command when error format option is set to long [#2226](https://github.com/Orange-OpenSource/hurl/issues/2226)
 * Add option to configure max-time per request [#3162](https://github.com/Orange-OpenSource/hurl/issues/3162)
 * Add date comparison predicates [#3480](https://github.com/Orange-OpenSource/hurl/issues/3480)
 * Add pinnedpubkey cli option [#3563](https://github.com/Orange-OpenSource/hurl/issues/3563)
 * Add base64 url safe encode and decode filters [#3840](https://github.com/Orange-OpenSource/hurl/issues/3840)
+* parse curl's --cookie flag [#3877](https://github.com/Orange-OpenSource/hurl/issues/3877)
 * Show hurl --help with color [#3882](https://github.com/Orange-OpenSource/hurl/issues/3882)
 * Add toHex filter [#3963](https://github.com/Orange-OpenSource/hurl/issues/3963)
 * Add first and last filters [#3998](https://github.com/Orange-OpenSource/hurl/issues/3998)
@@ -38,6 +45,11 @@ Enhancements:
 * Add support for negative values for nth filter [#4050](https://github.com/Orange-OpenSource/hurl/issues/4050)
 * Add option to configure pinnedpubkey per request [#4084](https://github.com/Orange-OpenSource/hurl/issues/4084)
 * Add timeline link on status label in source and run pages [#4128](https://github.com/Orange-OpenSource/hurl/issues/4128)
+* Support template in nth filter parameter [#4152](https://github.com/Orange-OpenSource/hurl/issues/4152)
+* Implement predicate `isUuid` [#4179](https://github.com/Orange-OpenSource/hurl/issues/4179)
+* Improve captures error messages when filter chain returned no value [#4214](https://github.com/Orange-OpenSource/hurl/issues/4214)
+* Add --ntlm cli option [#4216](https://github.com/Orange-OpenSource/hurl/issues/4216)
+* Add --negotiate option [#4246](https://github.com/Orange-OpenSource/hurl/issues/4246)
 
 
 Bugs Fixed:
@@ -46,6 +58,7 @@ Bugs Fixed:
 * Fix hurlfmt to disallow invalid header argument in curl command [#3668](https://github.com/Orange-OpenSource/hurl/issues/3668)
 * Parse verbose flag in curl command [#3760](https://github.com/Orange-OpenSource/hurl/issues/3760)
 * Keep secret value forever, even if a secret variable override an existing one [#3898](https://github.com/Orange-OpenSource/hurl/issues/3898)
+* Fix zsh completion [#3938](https://github.com/Orange-OpenSource/hurl/issues/3938)
 * Parse cookie Expires date attribute with '-' [#3956](https://github.com/Orange-OpenSource/hurl/issues/3956)
 * Replace deprecated libxml2 initGenericErrorDefaultFunc with xmlSetGenericErrorFunc [#3975](https://github.com/Orange-OpenSource/hurl/issues/3975)
 * HTML report: fix span for lines in comment. [#4002](https://github.com/Orange-OpenSource/hurl/issues/4002)
@@ -53,6 +66,7 @@ Bugs Fixed:
 * Add replaceRegex filter and fix replace filter to not take regex [#4018](https://github.com/Orange-OpenSource/hurl/issues/4018)
 * Fix request body during redirections [#4073](https://github.com/Orange-OpenSource/hurl/issues/4073)
 * Fix "variables" token in GraphQL HTML export [#4117](https://github.com/Orange-OpenSource/hurl/issues/4117)
+* Support negative index in jsonpath [#4154](https://github.com/Orange-OpenSource/hurl/issues/4154)
 
 
 Security Issues Fixed:

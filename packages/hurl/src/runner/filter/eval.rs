@@ -52,7 +52,7 @@ use crate::runner::{RunnerError, RunnerErrorKind, Value, VariableSet};
 /// Apply successive `filter` to an input `value`.
 /// Specify whether they are executed  `in_assert` or not.
 pub fn eval_filters(
-    filters: &[Filter],
+    filters: &[&Filter],
     value: &Value,
     variables: &VariableSet,
     in_assert: bool,
@@ -108,7 +108,7 @@ pub fn eval_filter(
         FilterValue::Regex {
             value: regex_value, ..
         } => eval_regex(value, regex_value, variables, filter.source_info, in_assert),
-        FilterValue::Nth { n, .. } => eval_nth(value, filter.source_info, in_assert, n.as_i64()),
+        FilterValue::Nth { n, .. } => eval_nth(value, n, variables, filter.source_info, in_assert),
         FilterValue::Replace {
             old_value,
             new_value,
@@ -167,7 +167,7 @@ mod tests {
 
         assert_eq!(
             eval_filters(
-                &[Filter {
+                &[&Filter {
                     source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 6)),
                     value: FilterValue::Count,
                 }],

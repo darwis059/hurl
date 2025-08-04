@@ -171,6 +171,7 @@ jobs:
     needs: package-generic-linux-x64
     runs-on: ubuntu-latest
     steps:
+<<<<<<< HEAD
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
         with:
@@ -229,6 +230,66 @@ jobs:
           name: test-generic-linux-package-docker-archlinux-x64-artifacts
           path: |
             ./**/*.log
+=======
+    - name: Checkout repository
+      uses: actions/checkout@v4.2.2
+      with:
+        persist-credentials: false
+        ref: ${{ inputs.branch }}
+    - name: Retrieve release-generic-linux-x64-artifacts
+      uses: actions/download-artifact@v4.3.0
+      with:
+        name: release-generic-linux-x64-artifacts
+        path: target/upload
+    - name: Install package and tests integ
+      uses: addnab/docker-run-action@v3
+      with:
+        image: archlinux
+        options: --volume ${{ github.workspace }}:/work --workdir /work --privileged
+# Revert to libxml 2.13.8 that has a soname libxml2.so.2 required by our Ubuntu Hurl build (using `libxml2-legacy` package).
+# Starting from libxml 2.14, <https://gitlab.gnome.org/GNOME/libxml2/-/releases/v2.14.0>:
+#
+# > Binary compatibility is restricted to versions 2.14 or newer. On ELF systems, the soname was bumped from
+# > libxml2.so.2 to libxml2.so.16.
+#
+# We downgrade when testing the Hurl generic package, not when we're building the Hurl package on Arch Linux as the soname
+# problem arise only with the generic package.
+        run: |
+          set -e
+          echo "::group::Install system prerequisites"
+            bin/install_prerequisites_archlinux.sh
+          echo "::endgroup::"
+          echo "::group::Downgrade libxml2"
+          pacman --sync --noconfirm libxml2-legacy
+          echo "::endgroup::"
+          echo "::group::Activate python3 venv"
+            bin/activate_python3_venv.sh
+            export PATH=/tmp/hurl-python3-venv/bin:$PATH
+            which python3
+            python3 --version
+            pip --version
+          echo "::endgroup::"
+          echo "::group::Environment"
+            bin/environment.sh
+          echo "::endgroup::"
+          echo "::group::Install generic linux package"
+            bin/release/install_generic_linux_package.sh
+          export PATH="/tmp/hurl-generic-linux/bin:$PATH"
+          echo "::endgroup::"
+          echo "::group::Install tests prerequisites"
+            bin/test/test_prerequisites.sh
+          echo "::endgroup::"
+          echo "::group::Tests"
+            bin/test/test_integ.sh
+          echo "::endgroup::"
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v4.6.2
+      if: ${{ always() }}
+      with:
+        name: test-generic-linux-package-docker-archlinux-x64-artifacts
+        path: |
+          ./**/*.log
+>>>>>>> upstream/master
 
   test-generic-linux-on-docker-fedora-x64:
     needs: package-generic-linux-x64
@@ -700,6 +761,8 @@ jobs:
       - name: Package generic linux aarch64 anatomy
         if: ${{ always() }}
         run: bin/release/package-anatomy.sh artifacts/release-generic-linux-aarch64-artifacts/hurl-*-aarch64-unknown-linux-gnu.tar.gz --compare-with-dir docs/spec/packages
+        # FIXME: remove this next line to make the job error blocking.
+        continue-on-error: true
       - name: Package deb x64 anatomy
         if: ${{ always() }}
         run: bin/release/package-anatomy.sh artifacts/release-deb-x64-artifacts/hurl_*_amd64.deb --compare-with-dir docs/spec/packages

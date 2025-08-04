@@ -27,6 +27,13 @@ X-CSRF-TOKEN: {{csrf_token}}
 HTTP 302
 ```
 
+Body responses can be encoded by server (see [`Content-Encoding` HTTP header]) but captures in Hurl files are not
+affected by this content compression. All body captures (`body`, `bytes`, `sha256` etc...) work _after_ content decoding.
+
+Finally, body text captures (`body`, `jsonpath`, `xpath` etc...) are also decoded to strings based on [`Content-Type` header]
+so these queries can be captures as usual strings.
+
+
 Structure of a capture:
 
 <div class="schema-container schema-container u-font-size-2 u-font-size-3-sm">
@@ -62,6 +69,7 @@ A query can extract data from
   - [`md5`](#md5-capture)
 - others:
   - [`url`](#url-capture)
+  - [`redirects`](#redirects-capture)
   - [`ip`](#ip-address-capture)
   - [`variable`](#variable-capture)
   - [`duration`](#duration-capture)
@@ -165,6 +173,8 @@ HTTP 200
 my_body: bytes decode "gb2312"
 ```
 
+`body` capture works _after_ content encoding decompression (so the captured value is not affected by `Content-Encoding` response header).
+
 ### Bytes capture
 
 Capture the entire body (as a raw bytestream) from the received HTTP response
@@ -175,6 +185,9 @@ HTTP 200
 [Captures]
 my_data: bytes
 ```
+
+Like `body` capture, `bytes` capture works _after_ content encoding decompression (so the captured value is not
+affected by `Content-Encoding` response header).
 
 ### XPath capture
 
@@ -336,6 +349,25 @@ location: true
 HTTP 200
 [Captures]
 landing_url: url
+```
+
+### Redirects capture
+
+Capture each step of redirection. This is most meaningful if you have told Hurl to follow redirection (see [`[Options]`section][options] or
+[`--location` option]). Redirects capture consists of a variable name, followed by a `:`, and the keyword `redirects`.
+Redirects query returns a collection so each step of the redirection can be capture.
+
+```hurl
+GET https://example.org/redirecting/1
+[Options]
+location: true
+HTTP 200
+[Asserts]
+redirects count == 3
+[Captures]
+step1: redirects nth 0 location
+step2: redirects nth 1 location
+step3: redirects nth 2 location
 ```
 
 ### IP address capture

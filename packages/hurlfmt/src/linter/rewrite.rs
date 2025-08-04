@@ -18,11 +18,11 @@
 use hurl_core::ast::{
     Assert, Base64, Body, BooleanOption, Bytes, Capture, CertificateAttributeName, Comment, Cookie,
     CookiePath, CountOption, DurationOption, Entry, EntryOption, File, FilenameParam,
-    FilenameValue, FilterValue, Hex, HurlFile, JsonValue, KeyValue, LineTerminator, Method,
-    MultilineString, MultipartParam, NaturalOption, Number, OptionKind, Placeholder, Predicate,
-    PredicateFuncValue, PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response,
-    Section, SectionValue, StatusValue, Template, VariableDefinition, VariableValue, VersionValue,
-    I64, U64,
+    FilenameValue, FilterValue, Hex, HurlFile, IntegerValue, JsonValue, KeyValue, LineTerminator,
+    Method, MultilineString, MultipartParam, NaturalOption, Number, OptionKind, Placeholder,
+    Predicate, PredicateFuncValue, PredicateValue, Query, QueryValue, Regex, RegexValue, Request,
+    Response, Section, SectionValue, StatusValue, Template, VariableDefinition, VariableValue,
+    VersionValue, I64, U64,
 };
 use hurl_core::typing::{Count, Duration, DurationUnit, ToSource};
 
@@ -348,6 +348,15 @@ impl Lint for HurlFile {
     }
 }
 
+impl Lint for IntegerValue {
+    fn lint(&self) -> String {
+        match self {
+            IntegerValue::Literal(value) => value.lint(),
+            IntegerValue::Placeholder(value) => value.lint(),
+        }
+    }
+}
+
 impl Lint for I64 {
     fn lint(&self) -> String {
         self.to_source().to_string()
@@ -615,7 +624,8 @@ impl Lint for PredicateFuncValue {
             | PredicateFuncValue::IsEmpty
             | PredicateFuncValue::IsNumber
             | PredicateFuncValue::IsIpv4
-            | PredicateFuncValue::IsIpv6 => {}
+            | PredicateFuncValue::IsIpv6
+            | PredicateFuncValue::IsUuid => {}
         }
         s
     }

@@ -325,6 +325,10 @@ pub fn json_report_dir(arg_matches: &ArgMatches) -> Result<Option<PathBuf>, CliO
     }
 }
 
+pub fn negotiate(arg_matches: &ArgMatches) -> bool {
+    has_flag(arg_matches, "negotiate")
+}
+
 pub fn netrc(arg_matches: &ArgMatches) -> bool {
     has_flag(arg_matches, "netrc")
 }
@@ -349,6 +353,10 @@ pub fn netrc_optional(arg_matches: &ArgMatches) -> bool {
 
 pub fn no_proxy(arg_matches: &ArgMatches) -> Option<String> {
     get::<String>(arg_matches, "noproxy")
+}
+
+pub fn ntlm(arg_matches: &ArgMatches) -> bool {
+    has_flag(arg_matches, "ntlm")
 }
 
 pub fn output(arg_matches: &ArgMatches) -> Option<Output> {
