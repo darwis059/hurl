@@ -454,7 +454,6 @@ jobs:
   test-windows-wsl2-x64:
     runs-on: windows-latest
     steps:
-<<<<<<< HEAD
       - name: Set git to use LF
         run: |
           git config --global core.autocrlf false
@@ -465,7 +464,7 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.branch }}
       - name: Setup wsl Ubuntu
-        uses: Vampire/setup-wsl@v5.0.1
+        uses: Vampire/setup-wsl@v6.0.0
         with:
           distribution: Ubuntu-22.04
           wsl-version: 2
@@ -521,71 +520,3 @@ jobs:
           name: tests-win64-wsl2-artifacts
           path: |
             ./**/*.log
-=======
-    - name: Set git to use LF
-      run: |
-        git config --global core.autocrlf false
-        git config --global core.eol lf
-    - name: Checkout repository
-      uses: actions/checkout@v4.2.2
-      with:
-        persist-credentials: false
-        ref: ${{ inputs.branch }}
-    - name: Setup wsl Ubuntu
-      uses: Vampire/setup-wsl@v6.0.0
-      with:
-        distribution: Ubuntu-22.04
-        wsl-version: 2
-        wsl-conf: |
-          [interop]
-          appendWindowsPath=false
-    - name: List wsl distribution
-      run: |
-        wsl --list --verbose --all
-    - shell: wsl-bash {0}
-      run: |
-        # Build, Test units and Integration tests
-        set -e
-        echo "::group::Move to linux compatible workspace"
-          win_workspace="${{ github.workspace }}"
-          wsl_workspace="/mnt/$(echo "${win_workspace}" | tr -d ':'  | tr '\\' '/' | tr '[:upper:]' '[:lower:]')"
-          linux_workspace="/tmp/hurl"
-          cp -frp "${wsl_workspace}" "${linux_workspace}"
-          cd "${linux_workspace}"
-          pwd
-          ls
-        echo "::endgroup::"
-        echo "::group::Install Prerequisites"
-          bin/install_prerequisites_ubuntu.sh
-        echo "::endgroup::"
-        echo "::group::Install python 3.11"
-          bin/install_pythonx_for_ubuntu.sh 11
-          bin/activate_python3_venv.sh
-          export PATH=/tmp/hurl-python3-venv/bin:$PATH
-        echo "::endgroup::"
-        echo "::group::Install tests integ prerequisistes"
-          bin/test/test_prerequisites.sh
-        echo "::endgroup::"
-        echo "::group::Install Rust"
-          bin/install_rust.sh
-        echo "::endgroup::"
-        echo "::group::Environment"
-          bin/environment.sh
-        echo "::endgroup::"
-        echo "::group::Tests units"
-          bin/test/test_unit.sh
-        echo "::endgroup::"
-        echo "::group::Build"
-          bin/release/release.sh
-          export PATH="${PWD}/target/release:$PATH"
-        echo "::group::Tests integ"
-          bin/test/test_integ.sh
-        echo "::endgroup::"
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v4.6.2
-      if: ${{ always() }}
-      with:
-        name: tests-win64-wsl2-artifacts
-        path: |
-          ./**/*.log
->>>>>>> upstream/master
