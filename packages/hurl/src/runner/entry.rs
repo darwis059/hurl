@@ -15,17 +15,23 @@
  * limitations under the License.
  *
  */
-use hurl_core::ast::{Entry, PredicateFuncValue, Response, SourceInfo};
+use hurl_core::ast::{
+    Assert, Capture, Entry, FilterValue, PredicateFuncValue, Response, SourceInfo,
+};
+use hurl_core::types::Index;
 
 use crate::http;
 use crate::http::{ClientOptions, CurlCmd};
-use crate::runner::cache::BodyCache;
-use crate::runner::error::RunnerError;
-use crate::runner::result::{AssertResult, EntryResult};
-use crate::runner::runner_options::RunnerOptions;
-use crate::runner::{request, response, CaptureResult, RunnerErrorKind, VariableSet};
 use crate::util::logger::{Logger, Verbosity};
 use crate::util::term::WriteMode;
+
+use super::cache::BodyCache;
+use super::error::{RunnerError, RunnerErrorKind};
+use super::request;
+use super::response;
+use super::result::{AssertResult, CaptureResult, EntryResult};
+use super::runner_options::RunnerOptions;
+use super::variable::VariableSet;
 
 /// Runs an `entry` with `http_client` and returns one [`EntryResult`].
 ///
@@ -35,7 +41,7 @@ use crate::util::term::WriteMode;
 /// `variables` are used to render values at runtime, and can be updated by captures.
 pub fn run(
     entry: &Entry,
-    entry_index: usize,
+    entry_index: Index,
     http_client: &mut http::Client,
     variables: &mut VariableSet,
     runner_options: &RunnerOptions,
@@ -85,15 +91,14 @@ pub fn run(
     let client_options = ClientOptions::from(runner_options, logger.verbosity);
 
     // Experimental features with cookie storage
-    use std::str::FromStr;
-    if let Some(s) = request::cookie_storage_set(&entry.request) {
-        if let Ok(cookie) = http::Cookie::from_str(s.as_str()) {
+    if let Some(s) = request::get_cmd_cookie_storage_set(&entry.request) {
+        if let Ok(cookie) = http::Cookie::from_netscape_str(&s) {
             http_client.add_cookie(&cookie, logger);
         } else {
             logger.warning(&format!("Cookie string can not be parsed: '{s}'"));
         }
     }
-    if request::cookie_storage_clear(&entry.request) {
+    if request::get_cmd_cookie_storage_clear(&entry.request) {
         http_client.clear_cookie_storage(logger);
     }
 
@@ -291,9 +296,11 @@ fn log_request(
     request: &http::RequestSpec,
     logger: &mut Logger,
 ) {
+    let cookie_store = http_client.cookie_store(logger);
+
     logger.debug("");
     logger.debug_important("Cookie store:");
-    for cookie in &http_client.cookie_storage(logger) {
+    for cookie in cookie_store.cookies() {
         logger.debug(&cookie.to_string());
     }
 
@@ -354,4 +361,34 @@ fn warn_deprecated(response_spec: &Response, logger: &mut Logger) {
     }) {
         logger.warning("<includes> predicate is now deprecated in favor of <contains> predicate");
     }
+    if response_spec
+        .captures()
+        .iter()
+        .any(captures_has_format_filter)
+    {
+        logger.warning(
+            "<format> filter in captures is now deprecated in favor of <dateFormat> filter",
+        );
+    }
+    if response_spec
+        .asserts()
+        .iter()
+        .any(asserts_has_format_filter)
+    {
+        logger.warning(
+            "<format> filter in asserts is now deprecated in favor of <dateFormat> filter",
+        );
+    }
+}
+
+fn asserts_has_format_filter(a: &Assert) -> bool {
+    a.filters
+        .iter()
+        .any(|(_, f)| matches!(f.value, FilterValue::Format { .. }))
+}
+
+fn captures_has_format_filter(a: &Capture) -> bool {
+    a.filters
+        .iter()
+        .any(|(_, f)| matches!(f.value, FilterValue::Format { .. }))
 }

@@ -15,7 +15,7 @@
 * limitations under the License.
 *
 */
-use crate::http::RequestedHttpVersion;
+use super::request::RequestedHttpVersion;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HttpError {
@@ -60,6 +60,14 @@ impl From<curl::Error> for HttpError {
     }
 }
 
+impl From<curl::FormError> for HttpError {
+    fn from(err: curl::FormError) -> Self {
+        let code = err.code() as i32;
+        let description = err.description().to_string();
+        HttpError::Libcurl { code, description }
+    }
+}
+
 impl HttpError {
     pub fn description(&self) -> String {
         match self {
@@ -95,7 +103,7 @@ impl HttpError {
                 format!("the charset '{charset}' is not valid")
             }
             HttpError::InvalidDecoding { charset } => {
-                format!("the body can not be decoded with charset '{charset}'")
+                format!("could not decode response body with charset '{charset}'")
             }
             HttpError::InvalidUrl(url, reason) => {
                 format!("invalid URL <{url}> ({reason})").to_string()

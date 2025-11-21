@@ -18,7 +18,7 @@
 use std::str::FromStr;
 
 use hurl_core::ast::U64;
-use hurl_core::typing::{Duration, DurationUnit, ToSource};
+use hurl_core::types::{Duration, DurationUnit, ToSource};
 use regex::Regex;
 
 /// Parses a string to a `Duration`, including time unit.
@@ -86,6 +86,13 @@ mod tests {
             Duration {
                 value: U64::new(5, "5".to_source()),
                 unit: Some(DurationUnit::Minute)
+            }
+        );
+        assert_eq!(
+            parse("3h").unwrap(),
+            Duration {
+                value: U64::new(3, "3".to_source()),
+                unit: Some(DurationUnit::Hour)
             }
         );
     }

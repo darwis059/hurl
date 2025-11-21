@@ -23,7 +23,7 @@ use crate::ast::primitive::{
     SourceInfo, Template, Whitespace,
 };
 use crate::ast::Filter;
-use crate::typing::{SourceString, ToSource};
+use crate::types::{SourceString, ToSource};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Section {
@@ -402,18 +402,20 @@ pub enum PredicateFuncValue {
         space0: Whitespace,
         value: PredicateValue,
     },
-    IsInteger,
-    IsFloat,
+    Exist,
     IsBoolean,
-    IsString,
     IsCollection,
     IsDate,
-    IsIsoDate,
-    Exist,
     IsEmpty,
-    IsNumber,
+    IsFloat,
+    IsInteger,
     IsIpv4,
     IsIpv6,
+    IsIsoDate,
+    IsList,
+    IsNumber,
+    IsObject,
+    IsString,
     IsUuid,
 }
 
@@ -432,18 +434,20 @@ impl PredicateFuncValue {
             PredicateFuncValue::Contain { .. } => "contains",
             PredicateFuncValue::Include { .. } => "includes",
             PredicateFuncValue::Match { .. } => "matches",
-            PredicateFuncValue::IsInteger => "isInteger",
-            PredicateFuncValue::IsFloat => "isFloat",
+            PredicateFuncValue::Exist => "exists",
             PredicateFuncValue::IsBoolean => "isBoolean",
-            PredicateFuncValue::IsString => "isString",
             PredicateFuncValue::IsCollection => "isCollection",
             PredicateFuncValue::IsDate => "isDate",
-            PredicateFuncValue::IsIsoDate => "isIsoDate",
-            PredicateFuncValue::Exist => "exists",
             PredicateFuncValue::IsEmpty => "isEmpty",
-            PredicateFuncValue::IsNumber => "isNumber",
+            PredicateFuncValue::IsFloat => "isFloat",
+            PredicateFuncValue::IsInteger => "isInteger",
             PredicateFuncValue::IsIpv4 => "isIpv4",
             PredicateFuncValue::IsIpv6 => "isIpv6",
+            PredicateFuncValue::IsIsoDate => "isIsoDate",
+            PredicateFuncValue::IsList => "isList",
+            PredicateFuncValue::IsNumber => "isNumber",
+            PredicateFuncValue::IsObject => "isObject",
+            PredicateFuncValue::IsString => "isString",
             PredicateFuncValue::IsUuid => "isUuid",
         }
     }
@@ -462,7 +466,7 @@ mod tests {
     use super::*;
     use crate::ast::primitive::{SourceInfo, Template, TemplateElement};
     use crate::reader::Pos;
-    use crate::typing::ToSource;
+    use crate::types::ToSource;
 
     fn whitespace() -> Whitespace {
         Whitespace {

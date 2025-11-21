@@ -25,7 +25,7 @@ use crate::ast::section::{
     Assert, Capture, Cookie, MultipartParam, RegexValue, Section, SectionValue,
 };
 use crate::ast::Placeholder;
-use crate::typing::{SourceString, ToSource};
+use crate::types::{SourceString, ToSource};
 
 /// Represents Hurl AST root node.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -315,6 +315,10 @@ pub enum FilterValue {
         space0: Whitespace,
         fmt: Template,
     },
+    DateFormat {
+        space0: Whitespace,
+        fmt: Template,
+    },
     HtmlEscape,
     HtmlUnescape,
     JsonPath {
@@ -362,6 +366,8 @@ pub enum FilterValue {
         space0: Whitespace,
         param: Template,
     },
+    Utf8Decode,
+    Utf8Encode,
     XPath {
         space0: Whitespace,
         expr: Template,
@@ -382,6 +388,7 @@ impl FilterValue {
             FilterValue::Decode { .. } => "decode",
             FilterValue::First => "first",
             FilterValue::Format { .. } => "format",
+            FilterValue::DateFormat { .. } => "dateFormat",
             FilterValue::HtmlEscape => "htmlEscape",
             FilterValue::HtmlUnescape => "htmlUnescape",
             FilterValue::JsonPath { .. } => "jsonpath",
@@ -401,6 +408,8 @@ impl FilterValue {
             FilterValue::UrlDecode => "urlDecode",
             FilterValue::UrlEncode => "urlEncode",
             FilterValue::UrlQueryParam { .. } => "urlQueryParam",
+            FilterValue::Utf8Decode => "utf8Decode",
+            FilterValue::Utf8Encode => "utf8Encode",
             FilterValue::XPath { .. } => "xpath",
         }
     }

@@ -63,6 +63,7 @@ pub fn filter(reader: &mut Reader) -> ParseResult<Filter> {
             decode_filter,
             first_filter,
             format_filter,
+            date_format_filter,
             html_decode_filter,
             html_encode_filter,
             jsonpath_filter,
@@ -82,6 +83,8 @@ pub fn filter(reader: &mut Reader) -> ParseResult<Filter> {
             url_decode_filter,
             url_encode_filter,
             url_query_param_filter,
+            utf8_decode_filter,
+            utf8_encode_filter,
             xpath_filter,
         ],
         reader,
@@ -156,6 +159,13 @@ fn format_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     let space0 = one_or_more_spaces(reader)?;
     let fmt = quoted_template(reader)?;
     Ok(FilterValue::Format { space0, fmt })
+}
+
+fn date_format_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("dateFormat", reader)?;
+    let space0 = one_or_more_spaces(reader)?;
+    let fmt = quoted_template(reader)?;
+    Ok(FilterValue::DateFormat { space0, fmt })
 }
 
 fn html_encode_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
@@ -298,6 +308,16 @@ fn url_query_param_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     let space0 = one_or_more_spaces(reader)?;
     let param = quoted_template(reader).map_err(|e| e.to_non_recoverable())?;
     Ok(FilterValue::UrlQueryParam { space0, param })
+}
+
+fn utf8_decode_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("utf8Decode", reader)?;
+    Ok(FilterValue::Utf8Decode)
+}
+
+fn utf8_encode_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("utf8Encode", reader)?;
+    Ok(FilterValue::Utf8Encode)
 }
 
 fn xpath_filter(reader: &mut Reader) -> ParseResult<FilterValue> {

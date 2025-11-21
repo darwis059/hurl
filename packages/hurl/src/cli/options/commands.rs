@@ -416,6 +416,15 @@ pub fn no_output() -> clap::Arg {
         .action(clap::ArgAction::SetTrue)
 }
 
+pub fn no_pretty() -> clap::Arg {
+    clap::Arg::new("no_pretty")
+        .long("no-pretty")
+        .help("Do not prettify response output")
+        .help_heading("Output options")
+        .conflicts_with("pretty")
+        .action(clap::ArgAction::SetTrue)
+}
+
 pub fn noproxy() -> clap::Arg {
     clap::Arg::new("noproxy")
         .long("noproxy")
@@ -466,6 +475,14 @@ pub fn pinned_pub_key() -> clap::Arg {
         .help("Public key to verify peer against")
         .help_heading("HTTP options")
         .num_args(1)
+}
+
+pub fn pretty() -> clap::Arg {
+    clap::Arg::new("pretty")
+        .long("pretty")
+        .help("Prettify JSON response output")
+        .help_heading("Output options")
+        .action(clap::ArgAction::SetTrue)
 }
 
 pub fn progress_bar() -> clap::Arg {
@@ -568,6 +585,16 @@ pub fn secret() -> clap::Arg {
         .long("secret")
         .value_name("NAME=VALUE")
         .help("Define a variable which value is secret")
+        .help_heading("Run options")
+        .num_args(1)
+        .action(clap::ArgAction::Append)
+}
+
+pub fn secrets_file() -> clap::Arg {
+    clap::Arg::new("secrets_file")
+        .long("secrets-file")
+        .value_name("FILE")
+        .help("Define a secrets file in which you define your secrets")
         .help_heading("Run options")
         .num_args(1)
         .action(clap::ArgAction::Append)

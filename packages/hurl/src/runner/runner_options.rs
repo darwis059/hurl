@@ -18,11 +18,12 @@
 use std::time::Duration;
 
 use hurl_core::ast::Entry;
-use hurl_core::typing::{BytesPerSec, Count};
+use hurl_core::types::{BytesPerSec, Count};
 
 use crate::http::{IpResolve, RequestedHttpVersion};
-use crate::runner::Output;
 use crate::util::path::ContextDir;
+
+use super::output::Output;
 
 /// Build a [`RunnerOptions`] instance.
 pub struct RunnerOptionsBuilder {
@@ -237,7 +238,7 @@ impl RunnerOptionsBuilder {
 
     /// Sets follow redirect.
     ///
-    /// To limit the amount of redirects to follow use [`self.max_redirect()`]
+    /// To limit the amount of redirects to follow use [`Self::max_redirect`].
     pub fn follow_location(&mut self, follow_location: bool) -> &mut Self {
         self.follow_location = follow_location;
         self
@@ -245,7 +246,7 @@ impl RunnerOptionsBuilder {
 
     /// Sets follow redirect with trust.
     ///
-    /// To limit the amount of redirects to follow use [`self.max_redirect()`]
+    /// To limit the amount of redirects to follow use [`Self::max_redirect`].
     pub fn follow_location_trusted(&mut self, follow_location_trusted: bool) -> &mut Self {
         self.follow_location_trusted = follow_location_trusted;
         self

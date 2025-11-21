@@ -24,7 +24,7 @@ use hurl_core::ast::{
     Response, Section, SectionValue, StatusValue, Template, VariableDefinition, VariableValue,
     VersionValue, I64, U64,
 };
-use hurl_core::typing::{Count, Duration, DurationUnit, ToSource};
+use hurl_core::types::{Count, Duration, DurationUnit, ToSource};
 
 /// Lint a parsed `HurlFile` to a string.
 pub fn lint_hurl_file(file: &HurlFile) -> String {
@@ -257,6 +257,10 @@ impl Lint for FilterValue {
                 s.push(' ');
                 s.push_str(&fmt.lint());
             }
+            FilterValue::DateFormat { fmt, .. } => {
+                s.push(' ');
+                s.push_str(&fmt.lint());
+            }
             FilterValue::JsonPath { expr, .. } => {
                 s.push(' ');
                 s.push_str(&expr.lint());
@@ -321,7 +325,9 @@ impl Lint for FilterValue {
             | FilterValue::ToBool
             | FilterValue::ToString
             | FilterValue::UrlDecode
-            | FilterValue::UrlEncode => {}
+            | FilterValue::UrlEncode
+            | FilterValue::Utf8Decode
+            | FilterValue::Utf8Encode => {}
         }
         s
     }
@@ -473,9 +479,11 @@ impl Lint for OptionKind {
             OptionKind::LimitRate(value) => value.lint(),
             OptionKind::MaxRedirect(value) => value.lint(),
             OptionKind::MaxTime(value) => lint_duration_option(value, DurationUnit::MilliSecond),
+            OptionKind::Negotiate(value) => value.lint(),
             OptionKind::NetRc(value) => value.lint(),
             OptionKind::NetRcFile(value) => value.lint(),
             OptionKind::NetRcOptional(value) => value.lint(),
+            OptionKind::Ntlm(value) => value.lint(),
             OptionKind::Output(value) => value.lint(),
             OptionKind::PathAsIs(value) => value.lint(),
             OptionKind::PinnedPublicKey(value) => value.lint(),
@@ -613,18 +621,20 @@ impl Lint for PredicateFuncValue {
                 s.push(' ');
                 s.push_str(&value.lint());
             }
-            PredicateFuncValue::IsInteger
-            | PredicateFuncValue::IsFloat
+            PredicateFuncValue::Exist
             | PredicateFuncValue::IsBoolean
-            | PredicateFuncValue::IsString
             | PredicateFuncValue::IsCollection
             | PredicateFuncValue::IsDate
-            | PredicateFuncValue::IsIsoDate
-            | PredicateFuncValue::Exist
             | PredicateFuncValue::IsEmpty
-            | PredicateFuncValue::IsNumber
+            | PredicateFuncValue::IsFloat
+            | PredicateFuncValue::IsInteger
             | PredicateFuncValue::IsIpv4
             | PredicateFuncValue::IsIpv6
+            | PredicateFuncValue::IsIsoDate
+            | PredicateFuncValue::IsList
+            | PredicateFuncValue::IsNumber
+            | PredicateFuncValue::IsObject
+            | PredicateFuncValue::IsString
             | PredicateFuncValue::IsUuid => {}
         }
         s

@@ -20,7 +20,7 @@ use std::fmt;
 use crate::ast::primitive::{
     LineTerminator, Number, Placeholder, SourceInfo, Template, Whitespace, U64,
 };
-use crate::typing::{Count, Duration, SourceString, ToSource};
+use crate::types::{Count, Duration, SourceString, ToSource};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryOption {
@@ -55,9 +55,11 @@ pub enum OptionKind {
     LimitRate(NaturalOption),
     MaxRedirect(CountOption),
     MaxTime(DurationOption),
+    Negotiate(BooleanOption),
     NetRc(BooleanOption),
     NetRcFile(Template),
     NetRcOptional(BooleanOption),
+    Ntlm(BooleanOption),
     Output(Template),
     PathAsIs(BooleanOption),
     PinnedPublicKey(Template),
@@ -99,9 +101,11 @@ impl OptionKind {
             OptionKind::LimitRate(_) => "limit-rate",
             OptionKind::MaxRedirect(_) => "max-redirs",
             OptionKind::MaxTime(_) => "max-time",
+            OptionKind::Negotiate(_) => "negotiate",
             OptionKind::NetRc(_) => "netrc",
             OptionKind::NetRcFile(_) => "netrc-file",
             OptionKind::NetRcOptional(_) => "netrc-optional",
+            OptionKind::Ntlm(_) => "ntlm",
             OptionKind::Output(_) => "output",
             OptionKind::PathAsIs(_) => "path-as-is",
             OptionKind::PinnedPublicKey(_) => "pinnedpubkey",
@@ -144,9 +148,11 @@ impl fmt::Display for OptionKind {
             OptionKind::LimitRate(value) => value.to_string(),
             OptionKind::MaxRedirect(value) => value.to_string(),
             OptionKind::MaxTime(value) => value.to_string(),
+            OptionKind::Negotiate(value) => value.to_string(),
             OptionKind::NetRc(value) => value.to_string(),
             OptionKind::NetRcFile(filename) => filename.to_string(),
             OptionKind::NetRcOptional(value) => value.to_string(),
+            OptionKind::Ntlm(value) => value.to_string(),
             OptionKind::Output(filename) => filename.to_string(),
             OptionKind::PathAsIs(value) => value.to_string(),
             OptionKind::PinnedPublicKey(value) => value.to_string(),

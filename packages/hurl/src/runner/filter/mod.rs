@@ -50,4 +50,6 @@ mod to_string;
 mod url_decode;
 mod url_encode;
 mod url_query_param;
+mod utf8_decode;
+mod utf8_encode;
 mod xpath;

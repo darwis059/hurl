@@ -9,13 +9,16 @@ header "Content-Type" exists
 header "Header1" == "value1"
 header "ETag" == "\"33a64df551425fcc55e4d42a148795d9f25f89d4\""
 header "Expires" == "Wed, 21 Oct 2015 07:28:00 GMT"
+header "Expires" toDate "%a, %d %b %Y %H:%M:%S GMT" dateFormat "%Y" == "2015"
 header "Expires" toDate "%a, %d %b %Y %H:%M:%S GMT" format "%Y" == "2015"
 header "Expires" toDate "%a, %d %b %Y %H:%M:%S GMT" daysBeforeNow > 1000
 header "Set-Cookie" exists
 header "Set-Cookie" count == 3
 header "Set-Cookie" contains "cookie1=value1; Path=/"
 header "Set-Cookie" not contains "cookie4=value4; Path=/"
+header "X-Fruit" isList
 header "X-Fruit" isCollection
+header "X-Fruit" not isObject
 header "x-fruit" count == 4
 header "X-Fruit" nth 0 == "Banana"
 header "x-fruit" nth 1 == "Lemon"
@@ -32,8 +35,11 @@ HTTP 200
 [Captures]
 fruits: header "X-fruit"
 [Asserts]
+header "X-Fruit" isList
 header "X-Fruit" isCollection
+variable "fruits" isList
 variable "fruits" isCollection
+variable "fruits" not isObject
 variable "fruits" count == 4
 variable "fruits" nth 0 == "Banana"
 variable "fruits" nth 3 == "Strawberry"

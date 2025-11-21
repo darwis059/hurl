@@ -38,7 +38,7 @@ impl Testcase {
 
         let mut run = String::new();
         for (entry_index, e) in entries.iter().enumerate() {
-            let entry_src_index = e.entry_index - 1;
+            let entry_src_index = e.entry_index.to_zero_based();
             let entry_src = hurl_file.entries.get(entry_src_index).unwrap();
             let line = entry_src.source_info().start.line;
             let source = self.source_filename();
@@ -117,7 +117,9 @@ fn get_call_html(
     let url = &call.request.url.to_string().redact(secrets);
     let url = format!("<a href=\"{url}\">{url}</a>");
     let source = format!("<a href=\"{source}#l{line}\">{filename}:{line}</a>");
+    let start_date = call.timings.begin_call.to_rfc2822();
     let values = vec![
+        ("Start Date", start_date.as_str()),
         ("Request URL", url.as_str()),
         ("Request Method", call.request.method.as_str()),
         ("Version", version.as_str()),

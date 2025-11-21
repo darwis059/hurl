@@ -13,6 +13,7 @@ certificate "Expire-Date" daysAfterNow > 15                                     
 certificate "Start-Date" daysBeforeNow < 100                                                # daysBeforeNow
 bytes decode "iso-8859-1" == "café"                                                         # decode
 jsonpath "$.books" first jsonpath "$.name" == "Les Misérables"                              # first
+cookie "LSID[Expires]" dateFormat "%a, %d %b %Y %H:%M:%S" == "Wed, 13 Jan 2021 22:23:01"    # dateFormat
 cookie "LSID[Expires]" format "%a, %d %b %Y %H:%M:%S" == "Wed, 13 Jan 2021 22:23:01"        # format
 jsonpath "$.text" htmlEscape == "a &gt; b"                                                  # htmlEscape
 jsonpath "$.escaped_html[1]" htmlUnescape == "<p>Hello</p>"                                 # htmlUnescape
@@ -31,4 +32,6 @@ jsonpath "$.id" toString == "123"                                               
 jsonpath "$.encoded_url" urlDecode == "https://mozilla.org/?x=шеллы"                        # urlDecode
 jsonpath "$.url" urlEncode == "https%3A//mozilla.org/%3Fx%3D%D1%88%D0%B5%D0%BB%D0%BB%D1%8B" # urlEncode
 jsonpath "$.url" urlQueryParam "token" == "XYZ"                                             # urlQueryParam
+jsonpath "$.utf8_bytes" base64Decode utf8Decode == "Hello World"                            # utf8Decode
+jsonpath "$.message" utf8Encode toHex == "48656c6c6f20426f6221"                             # utf8Encode
 bytes decode "iso-8859-1" xpath "string(//p)" == "Hello"                                    # xpath

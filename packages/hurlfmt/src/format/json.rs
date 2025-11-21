@@ -25,7 +25,7 @@ use hurl_core::ast::{
     PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response, StatusValue,
     VersionValue,
 };
-use hurl_core::typing::{Count, Duration, ToSource};
+use hurl_core::types::{Count, Duration, ToSource};
 
 use crate::format::serialize_json::JValue;
 
@@ -328,9 +328,11 @@ impl ToJson for EntryOption {
             OptionKind::LimitRate(value) => value.to_json(),
             OptionKind::MaxRedirect(value) => value.to_json(),
             OptionKind::MaxTime(value) => value.to_json(),
+            OptionKind::Negotiate(value) => value.to_json(),
             OptionKind::NetRc(value) => value.to_json(),
             OptionKind::NetRcFile(filename) => JValue::String(filename.to_string()),
             OptionKind::NetRcOptional(value) => value.to_json(),
+            OptionKind::Ntlm(value) => value.to_json(),
             OptionKind::Output(filename) => JValue::String(filename.to_string()),
             OptionKind::PathAsIs(value) => value.to_json(),
             OptionKind::PinnedPublicKey(value) => JValue::String(value.to_string()),
@@ -557,18 +559,20 @@ impl ToJson for Predicate {
             PredicateFuncValue::Match { value, .. } => {
                 add_predicate_value(&mut attributes, value);
             }
-            PredicateFuncValue::IsInteger
-            | PredicateFuncValue::IsFloat
+            PredicateFuncValue::Exist
             | PredicateFuncValue::IsBoolean
-            | PredicateFuncValue::IsString
             | PredicateFuncValue::IsCollection
             | PredicateFuncValue::IsDate
-            | PredicateFuncValue::IsIsoDate
-            | PredicateFuncValue::Exist
             | PredicateFuncValue::IsEmpty
-            | PredicateFuncValue::IsNumber
+            | PredicateFuncValue::IsFloat
+            | PredicateFuncValue::IsInteger
             | PredicateFuncValue::IsIpv4
             | PredicateFuncValue::IsIpv6
+            | PredicateFuncValue::IsIsoDate
+            | PredicateFuncValue::IsList
+            | PredicateFuncValue::IsNumber
+            | PredicateFuncValue::IsObject
+            | PredicateFuncValue::IsString
             | PredicateFuncValue::IsUuid => {}
         }
         JValue::Object(attributes)
@@ -653,6 +657,9 @@ impl ToJson for FilterValue {
             FilterValue::Format { fmt, .. } => {
                 attributes.push(("fmt".to_string(), JValue::String(fmt.to_string())));
             }
+            FilterValue::DateFormat { fmt, .. } => {
+                attributes.push(("fmt".to_string(), JValue::String(fmt.to_string())));
+            }
             FilterValue::JsonPath { expr, .. } => {
                 attributes.push(("expr".to_string(), JValue::String(expr.to_string())));
             }
@@ -730,7 +737,7 @@ pub mod tests {
         TemplateElement, Version, Whitespace, I64,
     };
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use super::*;
 

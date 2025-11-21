@@ -57,12 +57,14 @@ _hurl() {
     '--netrc-optional[Use either .netrc or the URL]' \
     '--no-color[Do not colorize output]' \
     '--no-output[Suppress output. By default, Hurl outputs the body of the last response]' \
+    '--no-pretty[Do not prettify response output]' \
     '--noproxy[List of hosts which do not use proxy]: :' \
     '--ntlm[Tell Hurl to use NTLM authentication]' \
     '(-o --output)'{-o,--output}'[Write to FILE instead of stdout]: :_files' \
     '--parallel[Run files in parallel (default in test mode)]' \
     '--path-as-is[Tell Hurl to not handle sequences of /../ or /./ in the given URL path]' \
     '--pinnedpubkey[Public key to verify peer against]: :' \
+    '--pretty[Prettify JSON response output]' \
     '--progress-bar[Display a progress bar in test mode]' \
     '(-x --proxy)'{-x,--proxy}'[Use proxy on given PROTOCOL/HOST/PORT]: :' \
     '--repeat[Repeat the input files sequence NUM times, -1 for infinite loop]: :' \
@@ -74,6 +76,7 @@ _hurl() {
     '--retry[Maximum number of retries, 0 for no retries, -1 for unlimited retries]: :' \
     '--retry-interval[Interval in milliseconds before a retry]: :' \
     '*--secret[Define a variable which value is secret]: :' \
+    '*--secrets-file[Define a secrets file in which you define your secrets]: :_files' \
     '--ssl-no-revoke[(Windows) Tell Hurl to disable certificate revocation checks]' \
     '--test[Activate test mode (use parallel execution)]' \
     '--to-entry[Execute Hurl file to ENTRY_NUMBER (starting at 1)]: :' \

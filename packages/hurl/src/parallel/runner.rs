@@ -18,16 +18,16 @@
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, Mutex};
 
-use hurl_core::error::{DisplaySourceError, OutputFormat};
-use hurl_core::typing::Count;
-
+use super::error::JobError;
+use super::job::{Job, JobQueue, JobResult};
+use super::message::WorkerMessage;
+use super::progress::{Mode, ParProgress};
+use super::worker::{Worker, WorkerId};
 use crate::output;
-use crate::parallel::error::JobError;
-use crate::parallel::job::{Job, JobQueue, JobResult};
-use crate::parallel::message::WorkerMessage;
-use crate::parallel::progress::{Mode, ParProgress};
-use crate::parallel::worker::{Worker, WorkerId};
+use crate::pretty::PrettyMode;
 use crate::util::term::{Stderr, Stdout, WriteMode};
+use hurl_core::error::{DisplaySourceError, OutputFormat};
+use hurl_core::types::{Count, Index};
 
 /// A parallel runner manages a list of `Worker`. Each worker is either idle or is running a
 /// [`Job`]. To run jobs, the [`ParallelRunner::run`] method much be executed on the main thread.
@@ -62,19 +62,24 @@ pub struct ParallelRunner {
 pub enum WorkerState {
     /// Worker has no job to run.
     Idle,
-    /// Worker is currently running a `job`, the entry being executed is at 0-based index
-    /// `entry_index`, the total number of entries being `entry_count`.
+    /// Worker is currently running a `job`, the entry index being executed is `current_entry`,
+    /// the last entry index to be run is `last_entry` and `retry_count` is the number of retries.
     Running {
         job: Job,
-        entry_index: usize,
-        entry_count: usize,
+        current_entry: Index,
+        last_entry: Index,
+        retry_count: usize,
     },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OutputType {
     /// The last HTTP response body of a Hurl file is outputted on standard output.
-    ResponseBody { include_headers: bool, color: bool },
+    ResponseBody {
+        include_headers: bool,
+        color: bool,
+        pretty: PrettyMode,
+    },
     /// The whole Hurl file run is exported in a structured JSON export on standard output.
     Json,
     /// Nothing is outputted on standard output when a Hurl file run is completed.
@@ -199,8 +204,9 @@ impl ParallelRunner {
                 WorkerMessage::Running(msg) => {
                     self.workers[msg.worker_id.0].1 = WorkerState::Running {
                         job: msg.job,
-                        entry_index: msg.entry_index,
-                        entry_count: msg.entry_count,
+                        current_entry: msg.current_entry,
+                        last_entry: msg.last_entry,
+                        retry_count: msg.retry_count,
                     };
 
                     if self.progress.can_update() {
@@ -267,7 +273,7 @@ impl ParallelRunner {
                         }
                         None => {
                             // If we have received all the job results, we can stop the run.
-                            if let Some(jobs_count) = jobs_count {
+                            if let Count::Finite(jobs_count) = jobs_count {
                                 if results.len() == jobs_count {
                                     break;
                                 }
@@ -312,12 +318,14 @@ impl ParallelRunner {
             OutputType::ResponseBody {
                 include_headers,
                 color,
+                pretty,
             } => {
                 if hurl_result.success {
                     let result = output::write_last_body(
                         hurl_result,
                         include_headers,
                         color,
+                        pretty,
                         filename_out,
                         stdout,
                         append,

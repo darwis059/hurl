@@ -17,8 +17,9 @@
  */
 use hurl_core::ast::{Placeholder, Template, TemplateElement};
 
-use crate::runner::error::RunnerError;
-use crate::runner::{expr, VariableSet};
+use super::error::RunnerError;
+use super::expr;
+use super::variable::VariableSet;
 
 /// Renders to string a `template` given a map of variables.
 pub fn eval_template(template: &Template, variables: &VariableSet) -> Result<String, RunnerError> {
@@ -47,7 +48,7 @@ fn eval_template_element(
 mod tests {
     use hurl_core::ast::{Expr, ExprKind, SourceInfo, Variable, Whitespace};
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use super::*;
     use crate::runner::{Number, RunnerErrorKind, Value};

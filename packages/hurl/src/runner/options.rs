@@ -19,14 +19,19 @@ use hurl_core::ast::{
     BooleanOption, CountOption, DurationOption, Entry, NaturalOption, Number as AstNumber,
     OptionKind, Placeholder, VariableDefinition, VariableValue,
 };
-use hurl_core::typing::{BytesPerSec, Count, DurationUnit};
+use hurl_core::types::{BytesPerSec, Count, DurationUnit};
 
 use crate::http::{IpResolve, RequestedHttpVersion};
-use crate::runner::template::eval_template;
-use crate::runner::{
-    expr, Number, Output, RunnerError, RunnerErrorKind, RunnerOptions, Value, VariableSet,
-};
 use crate::util::logger::{Logger, Verbosity};
+
+use super::error::{RunnerError, RunnerErrorKind};
+use super::expr;
+use super::number::Number;
+use super::output::Output;
+use super::runner_options::RunnerOptions;
+use super::template::eval_template;
+use super::value::Value;
+use super::variable::VariableSet;
 
 /// Returns a new [`RunnerOptions`] based on the `entry` optional Options section
 /// and a default `runner_options`.
@@ -200,6 +205,10 @@ pub fn get_entry_options(
                 let value = eval_duration_option(value, variables, DurationUnit::MilliSecond)?;
                 entry_options.timeout = value;
             }
+            OptionKind::Negotiate(value) => {
+                let value = eval_boolean_option(value, variables)?;
+                entry_options.negotiate = value;
+            }
             OptionKind::NetRc(value) => {
                 let value = eval_boolean_option(value, variables)?;
                 entry_options.netrc = value;
@@ -211,6 +220,10 @@ pub fn get_entry_options(
             OptionKind::NetRcOptional(value) => {
                 let value = eval_boolean_option(value, variables)?;
                 entry_options.netrc_optional = value;
+            }
+            OptionKind::Ntlm(value) => {
+                let value = eval_boolean_option(value, variables)?;
+                entry_options.ntlm = value;
             }
             OptionKind::Output(output) => {
                 let filename = eval_template(output, variables)?;
@@ -309,6 +322,7 @@ pub fn get_entry_verbosity(
     Ok(verbosity)
 }
 
+/// Evaluates a boolean option, using a set of `variables`.
 fn eval_boolean_option(
     boolean_value: &BooleanOption,
     variables: &VariableSet,
@@ -330,6 +344,7 @@ fn eval_boolean_option(
     }
 }
 
+/// Evaluates a natural option, using a set of `variables`.
 fn eval_natural_option(
     natural_value: &NaturalOption,
     variables: &VariableSet,
@@ -361,6 +376,7 @@ fn eval_natural_option(
     }
 }
 
+/// Evaluates a count option, using a set of `variables`.
 fn eval_count_option(
     count_value: &CountOption,
     variables: &VariableSet,
@@ -392,7 +408,8 @@ fn eval_count_option(
     }
 }
 
-/// return duration value in milliseconds
+/// Evaluates a duration option, using a set of `variables`, and a default unit if unit is
+/// not explicit in `duration_value`.
 fn eval_duration_option(
     duration_value: &DurationOption,
     variables: &VariableSet,
@@ -406,6 +423,7 @@ fn eval_duration_option(
                 DurationUnit::MilliSecond => literal.value.as_u64(),
                 DurationUnit::Second => literal.value.as_u64() * 1000,
                 DurationUnit::Minute => literal.value.as_u64() * 1000 * 60,
+                DurationUnit::Hour => literal.value.as_u64() * 1000 * 60 * 60,
             }
         }
         DurationOption::Placeholder(Placeholder { expr, .. }) => match expr::eval(expr, variables)?
@@ -422,6 +440,7 @@ fn eval_duration_option(
                         DurationUnit::MilliSecond => value as u64,
                         DurationUnit::Second => (value * 1000) as u64,
                         DurationUnit::Minute => (value * 1000 * 60) as u64,
+                        DurationUnit::Hour => (value * 1000 * 60 * 60) as u64,
                     }
                 }
             }
@@ -437,6 +456,7 @@ fn eval_duration_option(
     Ok(std::time::Duration::from_millis(millis))
 }
 
+/// Evaluates a variable, using a set of `variables`.
 fn eval_variable_value(
     variable_value: &VariableValue,
     variables: &mut VariableSet,
@@ -452,6 +472,7 @@ fn eval_variable_value(
     }
 }
 
+/// Evaluates a number.
 fn eval_number(number: &AstNumber) -> Value {
     match number {
         AstNumber::Float(value) => Value::Number(Number::Float(value.as_f64())),
@@ -464,7 +485,7 @@ fn eval_number(number: &AstNumber) -> Value {
 mod tests {
     use hurl_core::ast::{Expr, ExprKind, Placeholder, SourceInfo, Variable, Whitespace, U64};
     use hurl_core::reader::Pos;
-    use hurl_core::typing::{Duration, DurationUnit, ToSource};
+    use hurl_core::types::{Duration, DurationUnit, ToSource};
 
     use super::*;
     use crate::runner::RunnerErrorKind;

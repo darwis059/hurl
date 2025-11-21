@@ -17,8 +17,10 @@
  */
 use core::fmt;
 
-use crate::http::header::HeaderVec;
-use crate::http::{Param, RequestCookie, Url};
+use super::header::HeaderVec;
+use super::param::Param;
+use super::request_cookie::RequestCookie;
+use super::url::Url;
 
 /// Represents the HTTP request asked to be executed by our user (different from the runtime
 /// executed HTTP request [`crate::http::Request`].

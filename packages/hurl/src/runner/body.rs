@@ -20,12 +20,13 @@ use std::path::PathBuf;
 use hurl_core::ast::{Base64, Body, Bytes, File, Hex, Template};
 
 use crate::http;
-use crate::runner::error::{RunnerError, RunnerErrorKind};
-use crate::runner::json::eval_json_value;
-use crate::runner::multiline::eval_multiline;
-use crate::runner::template::eval_template;
-use crate::runner::VariableSet;
 use crate::util::path::ContextDir;
+
+use super::error::{RunnerError, RunnerErrorKind};
+use super::json::eval_json_value;
+use super::multiline::eval_multiline;
+use super::template::eval_template;
+use super::variable::VariableSet;
 
 pub fn eval_body(
     body: &Body,
@@ -93,7 +94,7 @@ mod tests {
 
     use hurl_core::ast::{SourceInfo, TemplateElement, Whitespace};
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use super::*;
 

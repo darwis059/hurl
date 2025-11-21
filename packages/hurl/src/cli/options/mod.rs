@@ -16,10 +16,12 @@
  *
  */
 mod commands;
+mod context;
 mod duration;
 mod error;
 mod matches;
 mod variables;
+mod variables_file;
 
 use std::collections::HashMap;
 use std::env;
@@ -32,14 +34,16 @@ use clap::ArgMatches;
 pub use error::CliOptionsError;
 use hurl::http;
 use hurl::http::RequestedHttpVersion;
+use hurl::pretty::PrettyMode;
 use hurl::runner::Output;
 use hurl::util::logger::{LoggerOptions, LoggerOptionsBuilder, Verbosity};
 use hurl::util::path::ContextDir;
 use hurl_core::ast::Entry;
 use hurl_core::input::{Input, InputKind};
-use hurl_core::typing::{BytesPerSec, Count};
+use hurl_core::types::{BytesPerSec, Count};
 
 use crate::cli;
+pub use crate::cli::options::context::RunContext;
 use crate::runner::{RunnerOptions, RunnerOptionsBuilder, Value};
 
 /// Represents the list of all options that can be used in Hurl command line.
@@ -89,6 +93,7 @@ pub struct CliOptions {
     pub parallel: bool,
     pub path_as_is: bool,
     pub pinned_pub_key: Option<String>,
+    pub pretty: PrettyMode,
     pub progress_bar: bool,
     pub proxy: Option<String>,
     pub repeat: Option<Count>,
@@ -173,11 +178,9 @@ fn get_version() -> String {
     )
 }
 
-/// Parse the Hurl CLI options and returns a [`CliOptions`] result.
-///
-/// When a [`CliOptionsError::DisplayHelp`] variant is returned, `allow_color` is used
-/// to print an ANSI color help or not.
-pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
+/// Parse the Hurl CLI options and returns a [`CliOptions`] result, given a run `context`
+/// (environment variables).
+pub fn parse(context: &RunContext) -> Result<CliOptions, CliOptionsError> {
     let styles = Styles::styled()
         .header(AnsiColor::Green.on_default() | Effects::BOLD)
         .usage(AnsiColor::Green.on_default() | Effects::BOLD)
@@ -231,7 +234,9 @@ pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
         .arg(commands::json())
         .arg(commands::no_color())
         .arg(commands::no_output())
+        .arg(commands::no_pretty())
         .arg(commands::output())
+        .arg(commands::pretty())
         .arg(commands::progress_bar())
         .arg(commands::verbose())
         .arg(commands::very_verbose())
@@ -247,6 +252,7 @@ pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
         .arg(commands::retry())
         .arg(commands::retry_interval())
         .arg(commands::secret())
+        .arg(commands::secrets_file())
         .arg(commands::test())
         .arg(commands::to_entry())
         .arg(commands::variable())
@@ -268,13 +274,13 @@ pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
     let arg_matches = command.try_get_matches_from_mut(env::args_os());
     let arg_matches = match arg_matches {
         Ok(args) => args,
-        Err(error) => return Err(CliOptionsError::from_clap(error, allow_color)),
+        Err(error) => return Err(CliOptionsError::from_clap(error, context.is_with_color())),
     };
 
     // If we've no file input (either from the standard input or from the command line arguments),
     // we just print help and exit.
-    if !matches::has_input_files(&arg_matches) {
-        let help = if allow_color {
+    if !matches::has_input_files(&arg_matches, context) {
+        let help = if context.is_with_color() {
             command.render_help().ansi().to_string()
         } else {
             command.render_help().to_string()
@@ -282,7 +288,7 @@ pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
         return Err(CliOptionsError::NoInput(help));
     }
 
-    let opts = parse_matches(&arg_matches, allow_color)?;
+    let opts = parse_matches(&arg_matches, context)?;
     if opts.input_files.is_empty() {
         return Err(CliOptionsError::Error(
             "No input files provided".to_string(),
@@ -294,13 +300,13 @@ pub fn parse(allow_color: bool) -> Result<CliOptions, CliOptionsError> {
 
 fn parse_matches(
     arg_matches: &ArgMatches,
-    allow_color: bool,
+    context: &RunContext,
 ) -> Result<CliOptions, CliOptionsError> {
     let aws_sigv4 = matches::aws_sigv4(arg_matches);
     let cacert_file = matches::cacert_file(arg_matches)?;
     let client_cert_file = matches::client_cert_file(arg_matches)?;
     let client_key_file = matches::client_key_file(arg_matches)?;
-    let color = matches::color(arg_matches, allow_color);
+    let color = matches::color(arg_matches, context);
     let compressed = matches::compressed(arg_matches);
     let connect_timeout = matches::connect_timeout(arg_matches)?;
     let connects_to = matches::connects_to(arg_matches);
@@ -318,7 +324,7 @@ fn parse_matches(
     let http_version = matches::http_version(arg_matches);
     let ignore_asserts = matches::ignore_asserts(arg_matches);
     let include = matches::include(arg_matches);
-    let input_files = matches::input_files(arg_matches)?;
+    let input_files = matches::input_files(arg_matches, context)?;
     let insecure = matches::insecure(arg_matches);
     let interactive = matches::interactive(arg_matches);
     let ip_resolve = matches::ip_resolve(arg_matches);
@@ -337,7 +343,8 @@ fn parse_matches(
     let parallel = matches::parallel(arg_matches);
     let path_as_is = matches::path_as_is(arg_matches);
     let pinned_pub_key = matches::pinned_pub_key(arg_matches);
-    let progress_bar = matches::progress_bar(arg_matches);
+    let progress_bar = matches::progress_bar(arg_matches, context);
+    let pretty = matches::pretty(arg_matches, context);
     let proxy = matches::proxy(arg_matches);
     let output = matches::output(arg_matches);
     let output_type = matches::output_type(arg_matches);
@@ -345,7 +352,7 @@ fn parse_matches(
     let resolves = matches::resolves(arg_matches);
     let retry = matches::retry(arg_matches);
     let retry_interval = matches::retry_interval(arg_matches)?;
-    let secrets = matches::secret(arg_matches)?;
+    let secrets = matches::secret(arg_matches, context)?;
     let ssl_no_revoke = matches::ssl_no_revoke(arg_matches);
     let tap_file = matches::tap_file(arg_matches);
     let test = matches::test(arg_matches);
@@ -354,7 +361,7 @@ fn parse_matches(
     let unix_socket = matches::unix_socket(arg_matches);
     let user = matches::user(arg_matches);
     let user_agent = matches::user_agent(arg_matches);
-    let variables = matches::variables(arg_matches)?;
+    let variables = matches::variables(arg_matches, context)?;
     let verbose = matches::verbose(arg_matches);
     let very_verbose = matches::very_verbose(arg_matches);
     Ok(CliOptions {
@@ -399,6 +406,7 @@ fn parse_matches(
         path_as_is,
         pinned_pub_key,
         parallel,
+        pretty,
         progress_bar,
         proxy,
         output,

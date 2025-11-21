@@ -5,8 +5,8 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: 'ref branch for this workflow'
-        default: 'master'
+        description: "ref branch for this workflow"
+        default: "master"
         required: true
         type: string
 
@@ -16,115 +16,117 @@ env:
 permissions: {}
 
 jobs:
+
   checks:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
-        with:
-          persist-credentials: false
-          ref: ${{ inputs.branch }}
 
-      - name: Shellcheck
-        if: always()
-        run: bin/check/shellcheck.sh
+    - name: Checkout repository
+      uses: actions/checkout@v5.0.1
+      with:
+        persist-credentials: false
+        ref: ${{ inputs.branch }}
 
-      - name: Check ad hoc
-        if: always()
-        run: bin/check/ad_hoc.sh
+    - name: Shellcheck
+      if: always()
+      run: bin/check/shellcheck.sh
 
-      - name: Git leaks
-        if: always()
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/zricethezav/gitleaks:latest
-          options: --volume ${{ github.workspace }}:/work:rw --workdir /work --privileged --env CARGO_TERM_COLOR=always
-          run: gitleaks detect --verbose --config .github/workflows/config/gitleaks.toml
+    - name: Check ad hoc
+      if: always()
+      run: bin/check/ad_hoc.sh
 
-      - name: Hadolint
-        if: always()
-        run: bin/check/hadolint.sh ./contrib/docker/Dockerfile
+    - name: Git leaks
+      if: always()
+      uses: addnab/docker-run-action@v3
+      with:
+        image: ghcr.io/zricethezav/gitleaks:latest
+        options: --volume ${{ github.workspace }}:/work:rw --workdir /work --privileged --env CARGO_TERM_COLOR=always
+        run: gitleaks detect --verbose --config .github/workflows/config/gitleaks.toml
 
-      - name: Install Python 3.12
-        uses: actions/setup-python@v5.6.0
-        with:
-          python-version: '3.12'
+    - name: Hadolint
+      if: always()
+      run: bin/check/hadolint.sh ./contrib/docker/Dockerfile
 
-      - name: Install prerequisites
-        if: always()
-        run: |
-          bin/activate_python3_venv.sh
-          export PATH="/tmp/hurl-python3-venv/bin:$PATH"
-          echo "PATH=$PATH" >> $GITHUB_ENV
-          which python3
-          python3 --version
-          pip --version
-          bin/check/install_prerequisites.sh
+    - name: Install Python 3.12
+      uses: actions/setup-python@v6.0.0
+      with:
+        python-version: '3.12'
 
-      - name: Zizmor
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: always()
-        run: |
-          pip install zizmor
-          bin/check/zizmor.sh --github-token ${GITHUB_TOKEN} .github/workflows/*.yml
+    - name: Install prerequisites
+      if: always()
+      run: |
+        bin/activate_python3_venv.sh
+        export PATH="/tmp/hurl-python3-venv/bin:$PATH"
+        echo "PATH=$PATH" >> $GITHUB_ENV
+        which python3
+        python3 --version
+        pip --version
+        bin/check/install_prerequisites.sh
 
-      - name: Check Rust version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: always()
-        run: |
-          python3 -m pip install requests --quiet
-          bin/check/rust_version.py --token ${GITHUB_TOKEN} 7
+    - name: Zizmor
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: always()
+      run: |
+        pip install zizmor
+        bin/check/zizmor.sh --github-token ${GITHUB_TOKEN} .github/workflows/*.yml
 
-      - name: Generated
-        if: always()
-        run: bin/check/generated.sh
+    - name: Check Rust version
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: always()
+      run: |
+        python3 -m pip install requests --quiet
+        bin/check/rust_version.py --token ${GITHUB_TOKEN} 7
 
-      - name: Rustfmt
-        if: always()
-        run: bin/check/rustfmt.sh
+    - name: Generated
+      if: always()
+      run: bin/check/generated.sh
 
-      - name: Clippy
-        if: always()
-        run: bin/check/clippy.sh
+    - name: Rustfmt
+      if: always()
+      run: bin/check/rustfmt.sh
 
-      - name: Ruff
-        if: always()
-        run: bin/check/ruff.sh
+    - name: Clippy
+      if: always()
+      run: bin/check/clippy.sh
 
-      - name: Check XML/HTML files
-        if: always()
-        run: bin/check/xmllint.sh
+    - name: Ruff
+      if: always()
+      run: bin/check/ruff.sh
 
-      - name: Hurlfmt
-        if: always()
-        run: |
-          bin/release/release.sh
-          export PATH=target/release:$PATH
-          bin/check/hurlfmt.sh
+    - name: Check XML/HTML files
+      if: always()
+      run: bin/check/xmllint.sh
 
-      - name: Check crates licence
-        if: always()
-        run: python3 bin/check/license.py
+    - name: Hurlfmt
+      if: always()
+      run: |
+        bin/release/release.sh
+        export PATH=target/release:$PATH
+        bin/check/hurlfmt.sh
 
-      - name: Check hurl crate API changes
-        if: always()
-        run: bin/check/compatibility.sh
+    - name: Check crates licence
+      if: always()
+      run: python3 bin/check/license.py
 
-      - name: Check doc generation
-        if: always()
-        run: bin/check/doc.sh
+    - name: Check hurl crate API changes
+      if: always()
+      run: bin/check/compatibility.sh
 
-      - name: Check Valgrind
-        if: always()
-        run: |
-          sudo apt-get install -y valgrind
-          cargo install cargo-valgrind
-          bin/check/valgrind.sh
+    - name: Check doc generation
+      if: always()
+      run: bin/check/doc.sh
 
-      - name: Check completion files
-        if: always()
-        run: |
-          sudo apt-get install -y zsh fish powershell
-          bin/check/completion.sh
+    - name: Check Valgrind
+      if: always()
+      run: |
+        sudo apt-get install -y valgrind
+        cargo install cargo-valgrind
+        bin/check/valgrind.sh
+
+    - name: Check completion files
+      if: always()
+      run: |
+        sudo apt-get install -y zsh fish powershell
+        bin/check/completion.sh

@@ -18,13 +18,14 @@
 use hurl_core::ast::{Capture, SourceInfo};
 
 use crate::http;
-use crate::runner::cache::BodyCache;
-use crate::runner::error::{RunnerError, RunnerErrorKind};
-use crate::runner::filter::eval_filters;
-use crate::runner::query::eval_query;
-use crate::runner::result::CaptureResult;
-use crate::runner::template::eval_template;
-use crate::runner::VariableSet;
+
+use super::cache::BodyCache;
+use super::error::{RunnerError, RunnerErrorKind};
+use super::filter::eval_filters;
+use super::query::eval_query;
+use super::result::CaptureResult;
+use super::template::eval_template;
+use super::variable::VariableSet;
 
 /// Evaluates a `capture` with `variables` map and a list of `http_responses`, returns a
 /// [`CaptureResult`] on success or an [`RunnerError`].
@@ -80,7 +81,7 @@ pub mod tests {
         LineTerminator, Query, QueryValue, SourceInfo, Template, TemplateElement, Whitespace,
     };
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use self::super::super::query;
     use super::*;

@@ -18,9 +18,10 @@
 use hurl_core::ast::{MultilineString, MultilineStringKind};
 use serde_json::json;
 
-use crate::runner::json::eval_json_value;
-use crate::runner::template::eval_template;
-use crate::runner::{RunnerError, VariableSet};
+use super::error::RunnerError;
+use super::json::eval_json_value;
+use super::template::eval_template;
+use super::variable::VariableSet;
 
 /// Renders to string a multiline body, given a set of variables.
 pub fn eval_multiline(
@@ -56,7 +57,7 @@ mod tests {
         MultilineStringKind, SourceInfo, Template, TemplateElement, Whitespace,
     };
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use crate::runner::multiline::eval_multiline;
     use crate::runner::VariableSet;

@@ -309,74 +309,81 @@ predicate: ("not" sp )? predicate-func
 
 predicate-func:
     equal-predicate
-  | not-equal-predicate
-  | greater-predicate
-  | greater-or-equal-predicate
-  | less-predicate
-  | less-or-equal-predicate
-  | start-with-predicate
-  | end-with-predicate
-  | contain-predicate
-  | match-predicate
-  | exist-predicate
-  | is-empty-predicate
-  | include-predicate
-  | integer-predicate
-  | float-predicate
   | boolean-predicate
-  | string-predicate
-  | collection-predicate
-  | date-predicate
-  | iso-date-predicate
+  | contain-predicate
+  | end-with-predicate
+  | exist-predicate
+  | greater-or-equal-predicate
+  | greater-predicate
+  | include-predicate
+  | is-collection-predicate
+  | is-date-predicate
+  | is-float-predicate
+  | is-empty-predicate
+  | is-integer-predicate
   | is-ipv4-predicate
   | is-ipv6-predicate
+  | is-iso-date-predicate
+  | is-list
+  | is-object
+  | is-string-predicate
   | is-uuid-predicate
+  | less-or-equal-predicate
+  | less-predicate
+  | match-predicate
+  | not-equal-predicate
+  | start-with-predicate
 
 equal-predicate: "==" sp predicate-value
 
-not-equal-predicate: "!=" sp predicate-value
-
-greater-predicate: ">" sp (number | quoted-string | placeholder)
-
-greater-or-equal-predicate: ">=" sp sp* (number | quoted-string | placeholder)
-
-less-predicate: "<" sp (number | quoted-string | placeholder)
-
-less-or-equal-predicate: "<=" sp (number | quoted-string | placeholder)
-
-start-with-predicate: "startsWith" sp (quoted-string | oneline-hex | oneline-base64)
-
-end-with-predicate: "endsWith" sp (quoted-string | oneline-hex | oneline-base64)
+boolean-predicate: "isBoolean"
 
 contain-predicate: "contains" sp quoted-string
 
-match-predicate: "matches" sp (quoted-string | regex)
+end-with-predicate: "endsWith" sp (quoted-string | oneline-hex | oneline-base64)
 
 exist-predicate: "exists"
 
-is-empty-predicate: "isEmpty"
+greater-or-equal-predicate: ">=" sp sp* (number | quoted-string | placeholder)
+
+greater-predicate: ">" sp (number | quoted-string | placeholder)
 
 include-predicate: "includes" sp predicate-value
 
-integer-predicate: "isInteger"
+is-collection-predicate: "isCollection"
 
-float-predicate: "isFloat"
+is-date-predicate: "isDate"
 
-boolean-predicate: "isBoolean"
+is-empty-predicate: "isEmpty"
 
-string-predicate: "isString"
+is-float-predicate: "isFloat"
 
-collection-predicate: "isCollection"
-
-date-predicate: "isDate"
-
-iso-date-predicate: "isIsoDate"
+is-integer-predicate: "isInteger"
 
 is-ipv4-predicate: "isIpv4"
 
 is-ipv6-predicate: "isIpv6"
 
+is-iso-date-predicate: "isIsoDate"
+
+is-list: "isList"
+
+is-object: "isObject"
+
+is-string-predicate: "isString"
+
 is-uuid-predicate: "isUuid"
+
+less-or-equal-predicate: "<=" sp (number | quoted-string | placeholder)
+
+less-predicate: "<" sp (number | quoted-string | placeholder)
+
+match-predicate: "matches" sp (quoted-string | regex)
+
+not-equal-predicate: "!=" sp predicate-value
+
+start-with-predicate: "startsWith" sp (quoted-string | oneline-hex | oneline-base64)
+
 
 predicate-value:
     boolean
@@ -562,7 +569,7 @@ filter:
   | days-before-now-filter
   | decode-filter
   | first-filter
-  | format-filter
+  | date-format-filter
   | html-escape-filter
   | html-unescape-filter
   | jsonpath-filter
@@ -581,6 +588,8 @@ filter:
   | url-decode-filter
   | url-encode-filter
   | url-query-param-filter
+  | utf8-decode-filter
+  | utf8-encode-filter
   | xpath-filter
 
 base64-decode-filter: "base64Decode"
@@ -601,7 +610,7 @@ decode-filter: "decode"
 
 first-filter: "first" 
 
-format-filter: "format" sp quoted-string
+date-format-filter: "dateFormat" sp quoted-string
 
 html-escape-filter: "htmlEscape"
 
@@ -638,6 +647,10 @@ url-decode-filter: "urlDecode"
 url-encode-filter: "urlEncode"
 
 url-query-param-filter: "urlQueryParam" sp quoted-string
+
+utf8-decode-filter: "utf8Decode"
+
+utf8-encode-filter: "utf8Encode"
 
 xpath-filter: "xpath" sp quoted-string
 

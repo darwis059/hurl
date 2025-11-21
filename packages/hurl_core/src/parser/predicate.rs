@@ -87,6 +87,8 @@ fn predicate_func_value(reader: &mut Reader) -> ParseResult<PredicateFuncValue> 
             boolean_predicate,
             string_predicate,
             collection_predicate,
+            is_list_predicate,
+            is_object_predicate,
             date_predicate,
             iso_date_predicate,
             exist_predicate,
@@ -324,6 +326,16 @@ fn is_uuid_predicate(reader: &mut Reader) -> ParseResult<PredicateFuncValue> {
     Ok(PredicateFuncValue::IsUuid)
 }
 
+fn is_list_predicate(reader: &mut Reader) -> ParseResult<PredicateFuncValue> {
+    try_literal("isList", reader)?;
+    Ok(PredicateFuncValue::IsList)
+}
+
+fn is_object_predicate(reader: &mut Reader) -> ParseResult<PredicateFuncValue> {
+    try_literal("isObject", reader)?;
+    Ok(PredicateFuncValue::IsObject)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -331,7 +343,7 @@ mod tests {
         Expr, ExprKind, Float, Number, Placeholder, Template, TemplateElement, Variable, I64,
     };
     use crate::reader::Pos;
-    use crate::typing::ToSource;
+    use crate::types::ToSource;
 
     #[test]
     fn test_predicate_not() {

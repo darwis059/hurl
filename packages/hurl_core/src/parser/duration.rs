@@ -20,7 +20,7 @@ use std::str::FromStr;
 use crate::parser::number::natural;
 use crate::parser::{ParseError, ParseErrorKind, ParseResult};
 use crate::reader::Reader;
-use crate::typing::{Duration, DurationUnit};
+use crate::types::{Duration, DurationUnit};
 
 pub fn duration(reader: &mut Reader) -> ParseResult<Duration> {
     let value = natural(reader)?;
@@ -50,7 +50,7 @@ mod tests {
     use super::*;
     use crate::ast::U64;
     use crate::reader::Pos;
-    use crate::typing::{DurationUnit, ToSource};
+    use crate::types::{DurationUnit, ToSource};
 
     #[test]
     fn test_duration_unit() {
@@ -72,6 +72,11 @@ mod tests {
         assert_eq!(
             duration_unit(&mut reader).unwrap().unwrap(),
             DurationUnit::Minute
+        );
+        let mut reader = Reader::new("h\n");
+        assert_eq!(
+            duration_unit(&mut reader).unwrap().unwrap(),
+            DurationUnit::Hour
         );
     }
 
@@ -105,6 +110,16 @@ mod tests {
                 U64::new(10000, "10000".to_source()),
                 Some(DurationUnit::MilliSecond)
             )
+        );
+        let mut reader = Reader::new("1m");
+        assert_eq!(
+            duration(&mut reader).unwrap(),
+            Duration::new(U64::new(1, "1".to_source()), Some(DurationUnit::Minute))
+        );
+        let mut reader = Reader::new("1h");
+        assert_eq!(
+            duration(&mut reader).unwrap(),
+            Duration::new(U64::new(1, "1".to_source()), Some(DurationUnit::Hour))
         );
     }
 

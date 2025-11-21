@@ -69,10 +69,13 @@ fn parse_line(s: &str) -> Result<String, String> {
         .arg(commands::cookies())
         .arg(commands::insecure())
         .arg(commands::verbose())
+        .arg(commands::negotiate())
+        .arg(commands::ntlm())
         .arg(commands::location())
         .arg(commands::max_redirects())
         .arg(commands::method())
         .arg(commands::retry())
+        .arg(commands::user())
         .arg(commands::url())
         .arg(commands::url_param());
 
@@ -404,5 +407,43 @@ verbose: true
                 hurl_str
             );
         }
+    }
+
+    #[test]
+    fn test_user_option() {
+        let user = "test_user:test_pass";
+        let hurl_str = format!("GET http://localhost:8000/hello\n[Options]\nuser: {user}\n");
+
+        let flags = vec!["-u", "--user"];
+        for flag in flags {
+            assert_eq!(
+                parse_line(&format!("curl {flag} '{user}' http://localhost:8000/hello")).unwrap(),
+                hurl_str
+            );
+        }
+    }
+
+    #[test]
+    fn test_ntlm_flag() {
+        let hurl_str = r#"GET http://localhost:8000/hello
+[Options]
+ntlm: true
+"#;
+        assert_eq!(
+            parse_line("curl --ntlm http://localhost:8000/hello").unwrap(),
+            hurl_str
+        );
+    }
+
+    #[test]
+    fn test_negotiate_flag() {
+        let hurl_str = r#"GET http://localhost:8000/hello
+[Options]
+negotiate: true
+"#;
+        assert_eq!(
+            parse_line("curl --negotiate http://localhost:8000/hello").unwrap(),
+            hurl_str
+        );
     }
 }

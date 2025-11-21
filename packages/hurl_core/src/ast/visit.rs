@@ -28,7 +28,7 @@ use crate::ast::{
     PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response, Section, SectionValue,
     StatusValue, Template, VariableDefinition, VariableValue, VersionValue, Whitespace, U64,
 };
-use crate::typing::{Count, Duration, DurationUnit, SourceString, ToSource};
+use crate::types::{Count, Duration, DurationUnit, SourceString, ToSource};
 
 /// Each method of the `Visitor` trait is a hook to be potentially overridden. Each method's default
 /// implementation recursively visits the substructure of the input via the corresponding `walk` method;
@@ -376,9 +376,11 @@ pub fn walk_entry_option<V: Visitor>(visitor: &mut V, option: &EntryOption) {
         OptionKind::LimitRate(value) => visitor.visit_natural_option(value),
         OptionKind::MaxRedirect(value) => visitor.visit_count_option(value),
         OptionKind::MaxTime(value) => visitor.visit_duration_option(value),
+        OptionKind::Negotiate(value) => visitor.visit_bool_option(value),
         OptionKind::NetRc(value) => visitor.visit_bool_option(value),
         OptionKind::NetRcFile(filename) => visitor.visit_filename(filename),
         OptionKind::NetRcOptional(value) => visitor.visit_bool_option(value),
+        OptionKind::Ntlm(value) => visitor.visit_bool_option(value),
         OptionKind::Output(filename) => visitor.visit_filename(filename),
         OptionKind::PathAsIs(value) => visitor.visit_bool_option(value),
         OptionKind::PinnedPublicKey(value) => visitor.visit_template(value),
@@ -421,6 +423,10 @@ pub fn walk_filter<V: Visitor>(visitor: &mut V, filter: &Filter) {
         }
         FilterValue::First => {}
         FilterValue::Format { space0, fmt } => {
+            visitor.visit_whitespace(space0);
+            visitor.visit_template(fmt);
+        }
+        FilterValue::DateFormat { space0, fmt } => {
             visitor.visit_whitespace(space0);
             visitor.visit_template(fmt);
         }
@@ -480,16 +486,18 @@ pub fn walk_filter<V: Visitor>(visitor: &mut V, filter: &Filter) {
         FilterValue::ToHex => {}
         FilterValue::ToInt => {}
         FilterValue::ToBool => {}
+        FilterValue::ToString => {}
         FilterValue::UrlDecode => {}
         FilterValue::UrlEncode => {}
-        FilterValue::XPath { space0, expr } => {
-            visitor.visit_whitespace(space0);
-            visitor.visit_template(expr);
-        }
-        FilterValue::ToString => {}
         FilterValue::UrlQueryParam { space0, param } => {
             visitor.visit_whitespace(space0);
             visitor.visit_template(param);
+        }
+        FilterValue::Utf8Decode => {}
+        FilterValue::Utf8Encode => {}
+        FilterValue::XPath { space0, expr } => {
+            visitor.visit_whitespace(space0);
+            visitor.visit_template(expr);
         }
     }
 }
@@ -676,18 +684,20 @@ pub fn walk_predicate<V: Visitor>(visitor: &mut V, pred: &Predicate) {
             visitor.visit_whitespace(space0);
             visitor.visit_predicate_value(value);
         }
-        PredicateFuncValue::IsInteger
-        | PredicateFuncValue::IsFloat
+        PredicateFuncValue::Exist
         | PredicateFuncValue::IsBoolean
-        | PredicateFuncValue::IsString
         | PredicateFuncValue::IsCollection
         | PredicateFuncValue::IsDate
-        | PredicateFuncValue::IsIsoDate
-        | PredicateFuncValue::Exist
         | PredicateFuncValue::IsEmpty
-        | PredicateFuncValue::IsNumber
+        | PredicateFuncValue::IsFloat
+        | PredicateFuncValue::IsInteger
         | PredicateFuncValue::IsIpv4
         | PredicateFuncValue::IsIpv6
+        | PredicateFuncValue::IsIsoDate
+        | PredicateFuncValue::IsList
+        | PredicateFuncValue::IsNumber
+        | PredicateFuncValue::IsObject
+        | PredicateFuncValue::IsString
         | PredicateFuncValue::IsUuid => {}
     }
 }

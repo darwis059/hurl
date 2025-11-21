@@ -15,11 +15,12 @@
  * limitations under the License.
  *
  */
+use crate::util::term::{Stderr, Stdout};
+use hurl_core::types::Index;
 use std::io;
 
-use crate::parallel::job::{Job, JobResult};
-use crate::parallel::worker::WorkerId;
-use crate::util::term::{Stderr, Stdout};
+use super::job::{Job, JobResult};
+use super::worker::WorkerId;
 
 /// Represents a message sent from the worker to the runner (running on the main thread).
 #[allow(clippy::large_enum_variant)]
@@ -85,20 +86,29 @@ pub struct RunningMsg {
     pub worker_id: WorkerId,
     /// Job originator of this message.
     pub job: Job,
-    /// 0-based index of the current entry.
-    pub entry_index: usize,
-    /// Number of entries
-    pub entry_count: usize,
+    /// Index of the current entry.
+    pub current_entry: Index,
+    /// Index of the last entry to be run.
+    pub last_entry: Index,
+    /// Number of actual retries
+    pub retry_count: usize,
 }
 
 impl RunningMsg {
     /// Creates a new running message: the job is in progress.
-    pub fn new(worker_id: WorkerId, job: &Job, entry_index: usize, entry_count: usize) -> Self {
+    pub fn new(
+        worker_id: WorkerId,
+        job: &Job,
+        current_entry: Index,
+        last_entry: Index,
+        retry_count: usize,
+    ) -> Self {
         RunningMsg {
             worker_id,
             job: job.clone(),
-            entry_index,
-            entry_count,
+            current_entry,
+            last_entry,
+            retry_count,
         }
     }
 }

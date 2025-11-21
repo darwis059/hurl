@@ -21,9 +21,10 @@ use hurl_core::ast::{
 use hurl_core::parser::{parse_json_boolean, parse_json_null, parse_json_number};
 use hurl_core::reader::Reader;
 
+use super::error::{RunnerError, RunnerErrorKind};
+use super::expr;
 use super::template::eval_template;
-use crate::runner::error::{RunnerError, RunnerErrorKind};
-use crate::runner::{expr, VariableSet};
+use super::variable::VariableSet;
 
 /// Evaluates a JSON value to a string given a set of `variables`.
 /// If `keep_whitespace` is true, whitespace is preserved from the JSonValue, otherwise
@@ -180,7 +181,7 @@ fn encode_json_char(c: char) -> String {
 mod tests {
     use hurl_core::ast::*;
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use super::super::error::RunnerErrorKind;
     use super::*;

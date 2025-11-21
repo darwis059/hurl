@@ -19,14 +19,16 @@ use std::time::Duration;
 
 use hurl_core::ast::SourceInfo;
 use hurl_core::reader::Pos;
+use hurl_core::types::Index;
 
 use crate::http::{Call, Cookie, CurlCmd};
-use crate::runner::error::RunnerError;
-use crate::runner::output::Output;
-use crate::runner::value::Value;
-use crate::runner::{RunnerErrorKind, VariableSet};
 use crate::util::path::ContextDir;
 use crate::util::term::Stdout;
+
+use super::error::{RunnerError, RunnerErrorKind};
+use super::output::Output;
+use super::value::Value;
+use super::variable::VariableSet;
 
 /// Represents the result of a valid Hurl file execution.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -76,8 +78,8 @@ impl HurlResult {
 /// Represents the execution result of an entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryResult {
-    /// 1-based index of the entry on the file execution.
-    pub entry_index: usize,
+    /// Index of the entry on the file execution.
+    pub entry_index: Index,
     /// Source information of this entry.
     pub source_info: SourceInfo,
     /// List of HTTP request / response pair.
@@ -102,7 +104,7 @@ pub struct EntryResult {
 impl Default for EntryResult {
     fn default() -> Self {
         EntryResult {
-            entry_index: 1,
+            entry_index: Index::new(1),
             source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 1)),
             calls: vec![],
             captures: vec![],

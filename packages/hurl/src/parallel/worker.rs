@@ -19,17 +19,15 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::{fmt, thread};
 
-use hurl_core::error::{DisplaySourceError, OutputFormat};
-use hurl_core::parser;
-
-use crate::parallel::job::{Job, JobResult};
-use crate::parallel::message::{
-    CompletedMsg, InputReadErrorMsg, ParsingErrorMsg, RunningMsg, WorkerMessage,
-};
+use super::job::{Job, JobResult};
+use super::message::{CompletedMsg, InputReadErrorMsg, ParsingErrorMsg, RunningMsg, WorkerMessage};
 use crate::runner;
 use crate::runner::EventListener;
 use crate::util::logger::Logger;
 use crate::util::term::{Stderr, Stdout, WriteMode};
+use hurl_core::error::{DisplaySourceError, OutputFormat};
+use hurl_core::parser;
+use hurl_core::types::Index;
 
 /// A worker runs job in its own thread.
 pub struct Worker {
@@ -173,8 +171,8 @@ impl WorkerProgress {
 }
 
 impl EventListener for WorkerProgress {
-    fn on_running(&self, entry_index: usize, entry_count: usize) {
-        let msg = RunningMsg::new(self.worker_id, &self.job, entry_index, entry_count);
+    fn on_entry_running(&self, current: Index, last: Index, retry_count: usize) {
+        let msg = RunningMsg::new(self.worker_id, &self.job, current, last, retry_count);
         _ = self.tx.send(WorkerMessage::Running(msg));
     }
 }

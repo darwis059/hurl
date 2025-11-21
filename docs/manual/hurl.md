@@ -226,7 +226,7 @@ This is a cli-only option.
 
 Sets delay before each request (aka sleep). The delay is not applied to requests that have been retried because of [`--retry`](#retry). See [`--retry-interval`](#retry-interval) to space retried requests.
 
-You can specify time units in the delay expression. Set Hurl to use a delay of 2 seconds with `--delay 2s` or set it to 500 milliseconds with `--delay 500ms`. No spaces allowed.
+You can specify time units in the delay expression. Set Hurl to use a delay of 2 seconds with `--delay 2s` or set it to 500 milliseconds with `--delay 500ms`. Supported time units: ms, s, m, h. No spaces allowed.
 
 ### --error-format <FORMAT> {#error-format}
 
@@ -361,8 +361,6 @@ See also [`--connect-timeout`](#connect-timeout).
 
 Tell Hurl to use Negotiate (SPNEGO) authentication.
 
-This is a cli-only option.
-
 ### -n, --netrc {#netrc}
 
 Scan the .netrc file in the user's home directory for the username and password.
@@ -393,6 +391,13 @@ Suppress output. By default, Hurl outputs the body of the last response.
 
 This is a cli-only option.
 
+### --no-pretty {#no-pretty}
+
+Do not prettify response output for supported content type (JSON only for the moment). By default, output is prettified if
+standard output is a terminal.
+
+This is a cli-only option.
+
 ### --noproxy <HOST(S)> {#noproxy}
 
 Comma-separated list of hosts which do not use a proxy.
@@ -402,8 +407,6 @@ Override value from Environment variable no_proxy.
 ### --ntlm {#ntlm}
 
 Tell Hurl to use NTLM authentication
-
-This is a cli-only option.
 
 ### -o, --output <FILE> {#output}
 
@@ -426,6 +429,12 @@ Tell Hurl to not handle sequences of /../ or /./ in the given URL path. Normally
 ### --pinnedpubkey <HASHES> {#pinnedpubkey}
 
 When negotiating a TLS or SSL connection, the server sends a certificate indicating its identity. A public key is extracted from this certificate and if it does not exactly match the public key provided to this option, Hurl aborts the connection before sending or receiving any data.
+
+### --pretty {#pretty}
+
+Prettify response output for supported content type (JSON only for the moment). By default, JSON response is prettified if standard output is a terminal, and colorized, see[`--no-color`](#no-color) to format without color.
+
+This is a cli-only option.
 
 ### --progress-bar {#progress-bar}
 
@@ -491,6 +500,16 @@ You can specify time units in the retry interval expression. Set Hurl to use a r
 ### --secret <NAME=VALUE> {#secret}
 
 Define secret value to be redacted from logs and report. When defined, secrets can be used as variable everywhere variables are used.
+
+This is a cli-only option.
+
+### --secrets-file <FILE> {#secrets-file}
+
+Define a secrets file in which you define your secrets
+
+Each secret is defined as name=value exactly as with [`--secret`](#secret) option.
+
+Note that defining a secret twice produces an error.
 
 This is a cli-only option.
 
@@ -592,9 +611,13 @@ Sets the proxy server to use if no protocol-specific proxy is set.
 
 List of host names that shouldn't go through any proxy.
 
-### HURL_name value
+### HURL_VARIABLE_name value
 
-Define variable (name/value) to be used in Hurl templates. This is similar than [`--variable`](#variable) and [`--variables-file`](#variables-file) options.
+Define variable (name/value) to be used in Hurl templates. This is similar to [`--variable`](#variable) and [`--variables-file`](#variables-file) options.
+
+### HURL_SECRET_name value
+
+Define secret (name/value) to be used in Hurl templates. This is similar to [`--secret`](#secret) and [`--secrets-file`](#secrets-file) options.
 
 ### NO_COLOR
 

@@ -19,22 +19,28 @@ use std::str::FromStr;
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use hurl_core::ast::{
-    Body, Bytes, Method, MultilineString, MultilineStringKind, Request, Template,
-};
+use hurl_core::ast::Body as AstBody;
+use hurl_core::ast::Method as AstMethod;
+use hurl_core::ast::{Bytes, MultilineString, MultilineStringKind, Request, Template};
 
-use crate::http;
-use crate::http::{HeaderVec, Url, UrlError, AUTHORIZATION};
-use crate::runner::error::RunnerError;
-use crate::runner::{body, multipart, template, RunnerErrorKind, VariableSet};
+use crate::http::{
+    Body, Header, HeaderVec, Method, Param, RequestCookie, RequestSpec, Url, UrlError,
+    AUTHORIZATION,
+};
 use crate::util::path::ContextDir;
+
+use super::body;
+use super::error::{RunnerError, RunnerErrorKind};
+use super::multipart;
+use super::template;
+use super::variable::VariableSet;
 
 /// Transforms an AST `request` to a spec request given a set of `variables`.
 pub fn eval_request(
     request: &Request,
     variables: &VariableSet,
     context_dir: &ContextDir,
-) -> Result<http::RequestSpec, RunnerError> {
+) -> Result<RequestSpec, RunnerError> {
     let method = eval_method(&request.method);
     let url = eval_url(&request.url, variables)?;
 
@@ -43,7 +49,7 @@ pub fn eval_request(
     for header in &request.headers {
         let name = template::eval_template(&header.key, variables)?;
         let value = template::eval_template(&header.value, variables)?;
-        let header = http::Header::new(&name, &value);
+        let header = Header::new(&name, &value);
         headers.push(header);
     }
 
@@ -55,7 +61,7 @@ pub fn eval_request(
         let user_password = user_password.as_bytes();
         let authorization = general_purpose::STANDARD.encode(user_password);
         let value = format!("Basic {authorization}");
-        let header = http::Header::new(AUTHORIZATION, &value);
+        let header = Header::new(AUTHORIZATION, &value);
         headers.push(header);
     }
 
@@ -64,7 +70,7 @@ pub fn eval_request(
     for param in request.querystring_params() {
         let name = template::eval_template(&param.key, variables)?;
         let value = template::eval_template(&param.value, variables)?;
-        let param = http::Param { name, value };
+        let param = Param { name, value };
         querystring.push(param);
     }
 
@@ -73,7 +79,7 @@ pub fn eval_request(
     for param in request.form_params() {
         let name = template::eval_template(&param.key, variables)?;
         let value = template::eval_template(&param.value, variables)?;
-        let param = http::Param { name, value };
+        let param = Param { name, value };
         form.push(param);
     }
 
@@ -82,13 +88,13 @@ pub fn eval_request(
     for cookie in request.cookies() {
         let name = template::eval_template(&cookie.name, variables)?;
         let value = template::eval_template(&cookie.value, variables)?;
-        let cookie = http::RequestCookie { name, value };
+        let cookie = RequestCookie { name, value };
         cookies.push(cookie);
     }
 
     let body = match &request.body {
         Some(body) => body::eval_body(body, variables, context_dir)?,
-        None => http::Body::Binary(vec![]),
+        None => Body::Binary(vec![]),
     };
 
     let mut multipart = vec![];
@@ -101,7 +107,7 @@ pub fn eval_request(
         Some("application/x-www-form-urlencoded".to_string())
     } else if !multipart.is_empty() {
         Some("multipart/form-data".to_string())
-    } else if let Some(Body {
+    } else if let Some(AstBody {
         value:
             Bytes::Json { .. }
             | Bytes::MultilineString(MultilineString {
@@ -116,7 +122,7 @@ pub fn eval_request(
     }) = request.body
     {
         Some("application/json".to_string())
-    } else if let Some(Body {
+    } else if let Some(AstBody {
         value:
             Bytes::Xml { .. }
             | Bytes::MultilineString(MultilineString {
@@ -131,7 +137,7 @@ pub fn eval_request(
         None
     };
 
-    Ok(http::RequestSpec {
+    Ok(RequestSpec {
         method,
         url,
         headers,
@@ -160,9 +166,10 @@ fn eval_url(url_template: &Template, variables: &VariableSet) -> Result<Url, Run
     }
 }
 
-/// Experimental feature
-/// @cookie_storage_add
-pub fn cookie_storage_set(request: &Request) -> Option<String> {
+/// Experimental feature `@cookie_storage_add`.
+///
+/// Returns the string used to set a new cookie in the cookie store.
+pub fn get_cmd_cookie_storage_set(request: &Request) -> Option<String> {
     for line_terminator in request.line_terminators.iter() {
         if let Some(s) = &line_terminator.comment {
             if s.value.contains("@cookie_storage_set:") {
@@ -175,9 +182,10 @@ pub fn cookie_storage_set(request: &Request) -> Option<String> {
     None
 }
 
-/// Experimental feature
-/// @cookie_storage_clear
-pub fn cookie_storage_clear(request: &Request) -> bool {
+/// Experimental feature `@cookie_storage_clear`.
+///
+/// Returns `true` if the cookie storage should be cleared, `false` otherwise.
+pub fn get_cmd_cookie_storage_clear(request: &Request) -> bool {
     for line_terminator in request.line_terminators.iter() {
         if let Some(s) = &line_terminator.comment {
             if s.value.contains("@cookie_storage_clear") {
@@ -188,8 +196,8 @@ pub fn cookie_storage_clear(request: &Request) -> bool {
     false
 }
 
-fn eval_method(method: &Method) -> http::Method {
-    http::Method(method.to_string())
+fn eval_method(method: &AstMethod) -> Method {
+    Method(method.to_string())
 }
 
 #[cfg(test)]
@@ -199,10 +207,11 @@ mod tests {
         SourceInfo, TemplateElement, Variable, Whitespace,
     };
     use hurl_core::reader::Pos;
-    use hurl_core::typing::ToSource;
+    use hurl_core::types::ToSource;
 
     use super::super::error::RunnerErrorKind;
     use super::*;
+    use crate::http;
     use crate::runner::Value;
 
     fn whitespace() -> Whitespace {
@@ -221,7 +230,7 @@ mod tests {
         Request {
             line_terminators: vec![],
             space0: whitespace(),
-            method: Method::new("GET"),
+            method: AstMethod::new("GET"),
             space1: whitespace(),
             url: Template::new(
                 None,
@@ -278,7 +287,7 @@ mod tests {
         Request {
             line_terminators: vec![],
             space0: whitespace(),
-            method: Method::new("GET"),
+            method: AstMethod::new("GET"),
             space1: whitespace(),
             url: Template::new(
                 None,
@@ -399,14 +408,14 @@ mod tests {
 
     #[test]
     fn clear_cookie_store() {
-        assert!(!cookie_storage_clear(&hello_request()));
+        assert!(!get_cmd_cookie_storage_clear(&hello_request()));
 
         let line_terminator = LineTerminator {
             space0: whitespace(),
             comment: None,
             newline: whitespace(),
         };
-        assert!(cookie_storage_clear(&Request {
+        assert!(get_cmd_cookie_storage_clear(&Request {
             line_terminators: vec![LineTerminator {
                 space0: whitespace(),
                 comment: Some(Comment {
@@ -416,7 +425,7 @@ mod tests {
                 newline: whitespace(),
             }],
             space0: whitespace(),
-            method: Method::new("GET"),
+            method: AstMethod::new("GET"),
             space1: whitespace(),
             url: Template::new(
                 None,
@@ -436,7 +445,7 @@ mod tests {
 
     #[test]
     fn add_cookie_in_storage() {
-        assert_eq!(None, cookie_storage_set(&hello_request()));
+        assert_eq!(None, get_cmd_cookie_storage_set(&hello_request()));
 
         let line_terminator = LineTerminator {
             space0: whitespace(),
@@ -445,7 +454,7 @@ mod tests {
         };
         assert_eq!(
             Some("localhost\tFALSE\t/\tFALSE\t0\tcookie1\tvalueA".to_string()),
-            cookie_storage_set(&Request {
+            get_cmd_cookie_storage_set(&Request {
                 line_terminators: vec![LineTerminator {
                     space0: whitespace(),
                     comment: Some(Comment {
@@ -457,7 +466,7 @@ mod tests {
                     newline: whitespace(),
                 }],
                 space0: whitespace(),
-                method: Method::new("GET"),
+                method: AstMethod::new("GET"),
                 space1: whitespace(),
                 url: Template::new(
                     None,

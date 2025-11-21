@@ -32,7 +32,7 @@ use hurl::util::redacted::Redact;
 use hurl_core::input::Input;
 use hurl_core::text;
 
-use crate::cli::options::{CliOptions, CliOptionsError};
+use crate::cli::options::{CliOptions, CliOptionsError, RunContext};
 use crate::cli::{BaseLogger, CliError};
 
 const EXIT_OK: i32 = 0;
@@ -56,9 +56,17 @@ struct HurlRun {
 fn main() {
     text::init_crate_colored();
 
-    let allow_color = allow_color_from_env();
+    // Construct the run context environment, this should be the sole place where we read
+    // environment variables. The run context will be injected in functions that need to access
+    // environment variables.
+    // TODO: add `env::current_dir` to the run context
+    let env_vars = env::vars().collect();
+    let stdin_term = io::stdin().is_terminal();
+    let stdout_term = io::stdout().is_terminal();
+    let stderr_term = io::stderr().is_terminal();
+    let ctx = RunContext::new(env_vars, stdin_term, stdout_term, stderr_term);
 
-    let opts = match cli::options::parse(allow_color) {
+    let opts = match cli::options::parse(&ctx) {
         Ok(v) => v,
         Err(e) => match e {
             CliOptionsError::DisplayHelp(e) | CliOptionsError::DisplayVersion(e) => {
@@ -153,18 +161,6 @@ fn has_report(opts: &CliOptions) -> bool {
         || opts.html_dir.is_some()
         || opts.json_report_dir.is_some()
         || opts.cookie_output_file.is_some()
-}
-
-/// Returns `true` if we can use ANSI color, solely base on the environment.
-///
-/// This function doesn't take CLI options into account.
-fn allow_color_from_env() -> bool {
-    if let Ok(v) = env::var("NO_COLOR") {
-        if !v.is_empty() {
-            return false;
-        }
-    }
-    io::stdout().is_terminal()
 }
 
 /// Writes `runs` results on file, in HTML, TAP, JUnit or Cookie file format.
@@ -333,7 +329,7 @@ fn create_cookies_file(
         s.push_str(&format!("# Cookies for file <{}>", run.filename));
         s.push('\n');
         for cookie in run.hurl_result.cookies.iter() {
-            s.push_str(&cookie.redact(secrets));
+            s.push_str(&cookie.to_netscape_str().redact(secrets));
             s.push('\n');
         }
     }

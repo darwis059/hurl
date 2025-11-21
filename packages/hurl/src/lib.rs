@@ -38,13 +38,16 @@
 //! The main function of this crate is [`runner::run`].
 //!
 //! This crate works on Windows, macOS and Linux.
+
 mod html;
 pub mod http;
 mod json;
 mod jsonpath;
+mod jsonpath2;
 pub mod output;
 #[doc(hidden)]
 pub mod parallel;
+pub mod pretty;
 pub mod report;
 pub mod runner;
 pub mod util;

@@ -16,7 +16,7 @@
  *
  */
 use hurl_core::input::Input;
-use hurl_core::typing::Count;
+use hurl_core::types::Count;
 
 use crate::runner::{HurlResult, RunnerOptions, VariableSet};
 use crate::util::logger::LoggerOptions;
@@ -103,13 +103,11 @@ impl<'job> JobQueue<'job> {
         }
     }
 
-    /// Returns the effective number of jobs.
-    ///
-    /// If queue is created in loop forever mode ([`Repeat::Forever`]), returns `None`.
-    pub fn jobs_count(&self) -> Option<usize> {
+    /// Returns the effective total number of jobs.
+    pub fn jobs_count(&self) -> Count {
         match self.repeat {
-            Count::Finite(n) => Some(self.jobs.len() * n),
-            Count::Infinite => None,
+            Count::Finite(n) => Count::Finite(self.jobs.len() * n),
+            Count::Infinite => Count::Infinite,
         }
     }
 
@@ -153,7 +151,7 @@ impl Iterator for JobQueue<'_> {
 #[cfg(test)]
 mod tests {
     use hurl_core::input::Input;
-    use hurl_core::typing::Count;
+    use hurl_core::types::Count;
 
     use crate::parallel::job::{Job, JobQueue};
     use crate::runner::{RunnerOptionsBuilder, VariableSet};
@@ -190,7 +188,7 @@ mod tests {
         assert_eq!(queue.next(), Some(new_job("c.hurl", 5)));
         assert_eq!(queue.next(), None);
 
-        assert_eq!(queue.jobs_count(), Some(6));
+        assert_eq!(queue.jobs_count(), Count::Finite(6));
     }
 
     #[test]
@@ -205,6 +203,6 @@ mod tests {
         assert_eq!(queue.next(), Some(new_job("foo.hurl", 4)));
         // etc...
 
-        assert_eq!(queue.jobs_count(), None);
+        assert_eq!(queue.jobs_count(), Count::Infinite);
     }
 }

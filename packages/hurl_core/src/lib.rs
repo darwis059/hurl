@@ -23,4 +23,7 @@ pub mod input;
 pub mod parser;
 pub mod reader;
 pub mod text;
-pub mod typing;
+pub mod types;
+
+// Keep this export to compatibility with Hurl 7.x
+pub use types as typing;
