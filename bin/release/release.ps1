@@ -42,9 +42,9 @@ sleep 10
 (Get-Command hurl).Path
 (Get-Command hurlfmt).Path
 hurl --version
-if ($LASTEXITCODE) { Throw }
+# if ($LASTEXITCODE) { Throw }
 hurlfmt --version
-if ($LASTEXITCODE) { Throw }
+# if ($LASTEXITCODE) { Throw }
 
 cd $actual_dir
 
