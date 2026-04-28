@@ -19,7 +19,7 @@ use hurl_core::ast::SourceInfo;
 
 use crate::runner::{Number, RunnerError, RunnerErrorKind, Value};
 
-/// Converts `value` to an integer.
+/// Converts `value` to an boolean.
 pub fn eval_to_bool(
     value: &Value,
     source_info: SourceInfo,
@@ -31,12 +31,12 @@ pub fn eval_to_bool(
         Value::String(v) => match v.parse::<i64>() {
             Ok(i) => Ok(Some(Value::Bool(i > 1))),
             _ => {
-                let kind = RunnerErrorKind::FilterInvalidInput(value.repr());
+                let kind = RunnerErrorKind::FilterInvalidInputValue(value.repr());
                 Err(RunnerError::new(source_info, kind, assert))
             }
         },
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.repr());
+            let kind = RunnerErrorKind::FilterInvalidInputValue(v.repr());
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
