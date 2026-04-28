@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
  */
 use super::placeholder;
 use crate::ast::{
-    is_variable_reserved, BooleanOption, CountOption, DurationOption, EntryOption, NaturalOption,
-    OptionKind, SourceInfo, VariableDefinition, VariableValue,
+    BooleanOption, CountOption, DurationOption, EntryOption, NaturalOption, OptionKind, SourceInfo,
+    VariableDefinition, VariableValue, VerbosityOption, is_variable_reserved,
 };
 use crate::combinator::{choice, non_recover};
 use crate::parser::duration::duration;
@@ -28,7 +28,7 @@ use crate::parser::primitives::{
     zero_or_more_spaces,
 };
 use crate::parser::string::{quoted_template, unquoted_template};
-use crate::parser::{filename, filename_password, ParseError, ParseErrorKind, ParseResult};
+use crate::parser::{ParseError, ParseErrorKind, ParseResult, filename, filename_password};
 use crate::reader::Reader;
 use crate::types::Count;
 
@@ -53,6 +53,7 @@ pub fn parse(reader: &mut Reader) -> ParseResult<EntryOption> {
         "connect-to" => option_connect_to(reader)?,
         "connect-timeout" => option_connect_timeout(reader)?,
         "delay" => option_delay(reader)?,
+        "digest" => option_digest(reader)?,
         "insecure" => option_insecure(reader)?,
         "header" => option_header(reader)?,
         "http1.0" => option_http_10(reader)?,
@@ -85,13 +86,14 @@ pub fn parse(reader: &mut Reader) -> ParseResult<EntryOption> {
         "user" => option_user(reader)?,
         "variable" => option_variable(reader)?,
         "verbose" => option_verbose(reader)?,
+        "verbosity" => option_verbosity(reader)?,
         "very-verbose" => option_very_verbose(reader)?,
         _ => {
             return Err(ParseError::new(
                 start.pos,
                 false,
                 ParseErrorKind::InvalidOption(option.to_string()),
-            ))
+            ));
         }
     };
 
@@ -139,6 +141,11 @@ fn option_connect_timeout(reader: &mut Reader) -> ParseResult<OptionKind> {
 fn option_delay(reader: &mut Reader) -> ParseResult<OptionKind> {
     let value = duration_option(reader)?;
     Ok(OptionKind::Delay(value))
+}
+
+fn option_digest(reader: &mut Reader) -> ParseResult<OptionKind> {
+    let value = non_recover(boolean_option, reader)?;
+    Ok(OptionKind::Digest(value))
 }
 
 fn option_follow_location(reader: &mut Reader) -> ParseResult<OptionKind> {
@@ -299,6 +306,23 @@ fn option_variable(reader: &mut Reader) -> ParseResult<OptionKind> {
 fn option_verbose(reader: &mut Reader) -> ParseResult<OptionKind> {
     let value = non_recover(boolean_option, reader)?;
     Ok(OptionKind::Verbose(value))
+}
+
+fn option_verbosity(reader: &mut Reader) -> ParseResult<OptionKind> {
+    let start = reader.cursor();
+    let name = reader.read_while(|c| c.is_ascii_alphabetic());
+    match name.as_str() {
+        "brief" => Ok(OptionKind::Verbosity(VerbosityOption::Brief)),
+        "verbose" => Ok(OptionKind::Verbosity(VerbosityOption::Verbose)),
+        "debug" => Ok(OptionKind::Verbosity(VerbosityOption::Debug)),
+        _ => {
+            reader.seek(start);
+            let kind = ParseErrorKind::Expecting {
+                value: "brief|verbose|debug".to_string(),
+            };
+            Err(ParseError::new(start.pos, false, kind))
+        }
+    }
 }
 
 fn option_very_verbose(reader: &mut Reader) -> ParseResult<OptionKind> {
@@ -468,7 +492,7 @@ fn variable_value(reader: &mut Reader) -> ParseResult<VariableValue> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{LineTerminator, Number, Template, TemplateElement, Whitespace, I64};
+    use crate::ast::{I64, LineTerminator, Number, Template, TemplateElement, Whitespace};
     use crate::reader::Pos;
     use crate::types::ToSource;
 

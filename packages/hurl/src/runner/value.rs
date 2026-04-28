@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ impl fmt::Display for ValueKind {
             ValueKind::Bytes => write!(f, "bytes"),
             ValueKind::Date => write!(f, "date"),
             ValueKind::Float => write!(f, "float"),
-            ValueKind::HttpResponse => write!(f, "http_response"),
+            ValueKind::HttpResponse => write!(f, "http response"),
             ValueKind::Integer => write!(f, "integer"),
             ValueKind::List => write!(f, "list"),
             ValueKind::Nodeset => write!(f, "nodeset"),

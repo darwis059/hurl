@@ -13,6 +13,7 @@ delay: 1000ms
 delay: 1s
 delay: 1m
 delay: 1h
+digest: false
 location: false
 location-trusted: false
 header: key: value
@@ -54,6 +55,7 @@ variable: score=7.7
 variable: name=Bob
 variable: name=Bob
 verbose: false
+verbosity: brief    # templating verbosity not supported
 very-verbose: false
 
 GET http://localhost:8000/hello
@@ -66,6 +68,7 @@ compressed: {{compressed}}
 connect-to: {{connect-to}}
 connect-timeout: {{connect-timeout}}
 delay: {{delay}}
+digest: {{digest}}
 location: {{location}}
 location-trusted: {{location-trusted}}
 header: {{header}}
@@ -97,4 +100,5 @@ unix-socket: {{socket-file}}
 user: {{user}}
 #variable: {{variable}}     NOT SUPPORTED YET
 verbose: {{verbose}}
+verbosity: brief    # templating verbosity not supported
 very-verbose: {{very-verbose}}

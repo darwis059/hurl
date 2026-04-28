@@ -11,24 +11,28 @@ on:
         required: true
         type: string
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
-
-permissions: {}
 
 jobs:
   benchsuite:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Install Prerequisites
       run: bin/install_prerequisites_ubuntu.sh
     - name: Install Python 3.11
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 #v6.2.0
       with:
         python-version: '3.11'
     - name: Activate python3 venv
@@ -42,9 +46,9 @@ jobs:
     - name: Build
       run: |
         bin/release/release.sh
-        echo "PATH=${PWD}/target/release:$PATH" >> "${GITHUB_ENV}"
+        echo "${PWD}/target/release" >> "${GITHUB_PATH}"
     - name: Archive artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-bench-artifacts
@@ -55,14 +59,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Install Rust
       run: bin/install_rust.sh
     - name: Install Python 3.11
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 #v6.2.0
       with:
         python-version: '3.11'
     - name: Environment
@@ -77,21 +81,20 @@ jobs:
         rust: [stable]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Install Prerequisites
       run: bin/install_prerequisites_ubuntu.sh
     - name: Install Python 3.11
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 #v6.2.0
       with:
         python-version: '3.11'
     - name: Activate python3 venv
       run: |
         bin/activate_python3_venv.sh
-        export PATH="/tmp/hurl-python3-venv/bin:$PATH"
-        echo "PATH=$PATH" >> $GITHUB_ENV
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
     - name: Install Rust
       run: bin/install_rust.sh
     - name: Environment
@@ -102,7 +105,7 @@ jobs:
       run: |
         bin/test/test_unit.sh
         bin/release/release.sh
-        echo "PATH=${PWD}/target/release:$PATH" >> "${GITHUB_ENV}"
+        echo "${PWD}/target/release" >> "${GITHUB_PATH}"
     - name: Integration Tests
       run: bin/test/test_integ.sh
     - name: Integration Tests (Hurl files using CRLF)
@@ -112,11 +115,11 @@ jobs:
         current_dir="${PWD}"
         tmp_dir=/tmp/hurl-tmp
         bin/test/convert_hurl_to_crlf.sh --dest-dir "${tmp_dir}"
-        cd "${tmp_dir}"
+        cd "${tmp_dir}" || exit 1
         bin/test/test_integ.sh || true
-        cd "${current_dir}"
+        cd "${current_dir}" || exit 1
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-ubuntu-latest-${{ matrix.rust }}-artifacts
@@ -132,21 +135,20 @@ jobs:
         rust: [stable]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Install Prerequisites
       run: bin/install_prerequisites_ubuntu.sh
     - name: Install Python 3.11
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 #v6.2.0
       with:
         python-version: '3.11'
     - name: Activate python3 venv
       run: |
         bin/activate_python3_venv.sh
-        export PATH="/tmp/hurl-python3-venv/bin:$PATH"
-        echo "PATH=$PATH" >> $GITHUB_ENV
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
     - name: Install Rust
       run: bin/install_rust.sh
     - name: Environment
@@ -157,11 +159,11 @@ jobs:
       run: |
         bin/test/test_unit.sh
         bin/release/release.sh
-        echo "PATH=${PWD}/target/release:$PATH" >> "${GITHUB_ENV}"
+        echo "${PWD}/target/release" >> "${GITHUB_PATH}"
     - name: Integration Tests
       run: bin/test/test_integ.sh
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-ubuntu-22.04-${{ matrix.rust }}-artifacts
@@ -172,40 +174,34 @@ jobs:
 
   test-docker-archlinux-x64:
     runs-on: ubuntu-latest
+    container:
+      image: archlinux
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
-    - name: Build, Test units and Integration tests
-      uses: addnab/docker-run-action@v3
-      with:
-        image: archlinux
-        options: --volume ${{ github.workspace }}:/work --workdir /work --privileged --env CARGO_TERM_COLOR=always
-        run: |
-          set -e
-          echo "::group::Install Prerequisites"
-            bin/install_prerequisites_archlinux.sh
-          echo "::endgroup::"
-          echo "::group::Activate python3 venv"
-            bin/activate_python3_venv.sh
-            export PATH=/tmp/hurl-python3-venv/bin:$PATH
-            which python3
-            python3 --version
-            pip --version
-          echo "::endgroup::"
-          echo "::group::Install Rust"
-            bin/install_rust.sh
-          echo "::endgroup::"
-          echo "::group::Environment"
-            bin/environment.sh
-          echo "::endgroup::"
-          echo "::group::Tests"
-            bin/test/test.sh
-          echo "::endgroup::"
+    - name: Install Prerequisites
+      run: bin/install_prerequisites_archlinux.sh
+    - name: Activate python3 venv
+      run: |
+        bin/activate_python3_venv.sh
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
+    - name: Python infos
+      run: |
+        which python3
+        python3 --version
+        pip --version
+    - name: Install Rust
+      run: bin/install_rust.sh
+    - name: Environment
+      run: bin/environment.sh
+    - name: Tests
+      run: |
+        bin/test/test.sh
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-archlinux-x64-artifacts
@@ -214,47 +210,39 @@ jobs:
 
   test-docker-fedora-x64:
     runs-on: ubuntu-latest
+    container:
+      image: fedora
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
-    - name: Build, Test units and Integration tests
-      uses: addnab/docker-run-action@v3
-      with:
-        image: fedora
-        options: --volume ${{ github.workspace }}:/work --workdir /work --privileged --env CARGO_TERM_COLOR=always
-        run: |
-          set -e
-          echo "::group::Disable PAM for sudo with root and no tty"
-            bin/disable_pam_for_sudo.sh
-          echo "::endgroup::"          
-          echo "::group::Install Prerequisites"
-            bin/install_prerequisites_fedora.sh
-          echo "::endgroup::"
-          echo "::group::Activate python3 venv"
-            bin/activate_python3_venv.sh
-            export PATH=/tmp/hurl-python3-venv/bin:$PATH
-            which python3
-            python3 --version
-            pip --version
-          echo "::endgroup::"
-          echo "::group::Install Rust"
-            bin/install_rust.sh
-          echo "::endgroup::"
-          echo "::group::Environment"
-            bin/environment.sh
-          echo "::endgroup::"
-          echo "::group::Tests"
-            bin/test/test.sh
-          echo "::endgroup::"
+    - name: Disable PAM for sudo
+      run: bin/disable_pam_for_sudo.sh
+    - name: Install Prerequisites
+      run: bin/install_prerequisites_fedora.sh
+    - name: Activate python3 venv
+      run: |
+        bin/activate_python3_venv.sh
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
+    - name: Python infos
+      run: |
+        which python3
+        python3 --version
+        pip --version
+    - name: Install Rust
+      run: bin/install_rust.sh
+    - name: Environment
+      run: bin/environment.sh
+    - name: Tests
+      run: bin/test/test.sh
     - name: Find artifacts
       run: |
         pwd
         find . -name "*.log"
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-fedora-x64-artifacts
@@ -263,46 +251,50 @@ jobs:
 
   test-docker-alpine-x64:
     runs-on: ubuntu-latest
+    container:
+      image: alpine
+    defaults:
+      run:
+        shell: sh
     steps:
+    - name: Install bash and git
+      run: |
+        apk update --quiet
+        apk add --quiet bash git
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
-    - name: Build, Test units and Integration tests
-      uses: addnab/docker-run-action@v3
-      with:
-        image: alpine
-        options: --volume ${{ github.workspace }}:/work --workdir /work --privileged --env CARGO_TERM_COLOR=always
-        run: |
-          set -e
-          apk update --quiet
-          apk add --quiet bash
-          echo "::group::Install Prerequisites"
-            bin/install_prerequisites_alpine.sh
-          echo "::endgroup::"
-          echo "::group::Activate python3 venv"
-            bin/activate_python3_venv.sh
-            export PATH=/tmp/hurl-python3-venv/bin:$PATH
-            which python3
-            python3 --version
-            pip --version
-          echo "::endgroup::"
-          echo "::group::Install Rust"
-            bin/install_rust.sh
-          echo "::endgroup::"
-          echo "::group::Environment"
-            bin/environment.sh
-          echo "::endgroup::"
-          echo "::group::Tests"
-            bin/test/test.sh
-          echo "::endgroup::"
+    - name: Install Prerequisites
+      shell: bash
+      run: bin/install_prerequisites_alpine.sh
+    - name: Activate python3 venv
+      shell: bash
+      run: |
+        bin/activate_python3_venv.sh
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
+    - name: Python infos
+      shell: bash
+      run: |
+        which python3
+        python3 --version
+        pip --version
+    - name: Install Rust
+      shell: bash
+      run: bin/install_rust.sh
+    - name: Environment
+      shell: bash
+      run: bin/environment.sh
+    - name: Tests
+      shell: bash
+      run: bin/test/test.sh
     - name: Find artifacts
       run: |
         pwd
         find . -name "*.log"
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-alpine-x64-artifacts
@@ -310,25 +302,25 @@ jobs:
           ./**/*.log
 
   test-macos-x64:
+    timeout-minutes: 60
     runs-on: macos-15-intel
     strategy:
       matrix:
         rust: [stable]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Install Prerequisites
-      run: |
-        bin/install_prerequisites_macos.sh
-        echo "PATH=$PATH" >> $GITHUB_ENV
+      run: bin/install_prerequisites_macos.sh
     - name: Activate python3 venv
       run: |
         bin/activate_python3_venv.sh
-        export PATH="/tmp/hurl-python3-venv/bin:$PATH"
-        echo "PATH=$PATH" >> $GITHUB_ENV
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
+    - name: Python infos
+      run: |
         which python3
         python3 --version
         pip --version
@@ -337,21 +329,18 @@ jobs:
     - name: Environment
       run: bin/environment.sh
     - name: Test Prerequisites
-      run: |
-        bin/test/test_prerequisites.sh
+      run: bin/test/test_prerequisites.sh
     - name: Tests units
       run: |
         bin/test/test_unit.sh
         bin/release/release.sh
-        echo "PATH=${PWD}/target/release:$PATH" >> "${GITHUB_ENV}"
-    - name: Integration Tests
-      run: bin/test/test_integ.sh
+        echo "${PWD}/target/release" >> "${GITHUB_PATH}"
     - name: Find artifacts
       run: |
         pwd
         find . -name "*.log"
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-macos-x64-${{ matrix.rust }}-artifacts
@@ -359,25 +348,25 @@ jobs:
           ./**/*.log
 
   test-macos-aarch64:
+    timeout-minutes: 60
     runs-on: macos-15
     strategy:
       matrix:
         rust: [stable]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Install Prerequisites
-      run: |
-        bin/install_prerequisites_macos.sh
-        echo "PATH=$PATH" >> $GITHUB_ENV
+      run: bin/install_prerequisites_macos.sh
     - name: Activate python3 venv
       run: |
         bin/activate_python3_venv.sh
-        export PATH="/tmp/hurl-python3-venv/bin:$PATH"
-        echo "PATH=$PATH" >> $GITHUB_ENV
+        echo "/tmp/hurl-python3-venv/bin" >> "${GITHUB_PATH}"
+    - name: Python infos
+      run: |
         which python3
         python3 --version
         pip --version
@@ -386,21 +375,18 @@ jobs:
     - name: Environment
       run: bin/environment.sh
     - name: Test Prerequisites
-      run: |
-        bin/test/test_prerequisites.sh
+      run: bin/test/test_prerequisites.sh
     - name: Tests units
       run: |
         bin/test/test_unit.sh
         bin/release/release.sh
-        echo "PATH=${PWD}/target/release:$PATH" >> "${GITHUB_ENV}"
-    - name: Integration Tests
-      run: bin/test/test_integ.sh
+        echo "${PWD}/target/release" >> "${GITHUB_PATH}"
     - name: Find artifacts
       run: |
         pwd
         find . -name "*.log"
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-macos-aarch64-${{ matrix.rust }}-artifacts
@@ -415,7 +401,7 @@ jobs:
         git config --global core.autocrlf false
         git config --global core.eol lf
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
@@ -423,26 +409,25 @@ jobs:
       run: |
         .\bin\install_rust.ps1
     - name: Manage vcpkg cache
-      uses: actions/cache@v4.3.0
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae #v5.0.5
       with:
         path: C:\vcpkg
         key: ${{ runner.os }}-test-windows-x64
     - name: Install prerequisites
       run: .\bin\install_prerequisites_windows.ps1
     - name: Install Python 3.11
-      uses: actions/setup-python@v6.0.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 #v6.2.0
       with:
         python-version: '3.11'
     - name: Environment
-      run: |
-        .\bin\activate_python3_venv.ps1
-        .\bin\environment.ps1
+      run: .\bin\activate_python3_venv.ps1
     - name: Build and test
       run: |
         .\bin\activate_python3_venv.ps1
-        .\bin\test\test.ps1
+        .\bin\test\test_prerequisites.ps1
+        .\bin\test\test_unit.ps1
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-win64-${{ matrix.rust }}-artifacts
@@ -457,12 +442,12 @@ jobs:
         git config --global core.autocrlf false
         git config --global core.eol lf
     - name: Checkout repository
-      uses: actions/checkout@v5.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
       with:
         persist-credentials: false
         ref: ${{ inputs.branch }}
     - name: Setup wsl Ubuntu
-      uses: Vampire/setup-wsl@v6.0.0
+      uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364 #v7.0.0
       with:
         distribution: Ubuntu-22.04
         wsl-version: 2
@@ -481,7 +466,7 @@ jobs:
           wsl_workspace="/mnt/$(echo "${win_workspace}" | tr -d ':'  | tr '\\' '/' | tr '[:upper:]' '[:lower:]')"
           linux_workspace="/tmp/hurl"
           cp -frp "${wsl_workspace}" "${linux_workspace}"
-          cd "${linux_workspace}"
+          cd "${linux_workspace}" || exit 1
           pwd
           ls
         echo "::endgroup::"
@@ -512,7 +497,7 @@ jobs:
           bin/test/test_integ.sh
         echo "::endgroup::"
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v5.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: ${{ always() }}
       with:
         name: tests-win64-wsl2-artifacts

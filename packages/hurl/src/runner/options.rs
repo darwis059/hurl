@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,12 @@
  */
 use hurl_core::ast::{
     BooleanOption, CountOption, DurationOption, Entry, NaturalOption, Number as AstNumber,
-    OptionKind, Placeholder, VariableDefinition, VariableValue,
+    OptionKind, Placeholder, Template, VariableDefinition, VariableValue, VerbosityOption,
 };
 use hurl_core::types::{BytesPerSec, Count, DurationUnit};
 
-use crate::http::{IpResolve, RequestedHttpVersion};
+use crate::http::{CredentialForwarding, FollowLocation, Header, IpResolve, RequestedHttpVersion};
+use crate::pretty::PrettyMode;
 use crate::util::logger::{Logger, Verbosity};
 
 use super::error::{RunnerError, RunnerErrorKind};
@@ -91,9 +92,13 @@ pub fn get_entry_options(
                 let value = eval_duration_option(value, variables, DurationUnit::MilliSecond)?;
                 entry_options.delay = value;
             }
-            OptionKind::Header(value) => {
-                let value = eval_template(value, variables)?;
-                entry_options.headers.push(value);
+            OptionKind::Digest(value) => {
+                let value = eval_boolean_option(value, variables)?;
+                entry_options.digest = value;
+            }
+            OptionKind::Header(header) => {
+                let header = eval_header_option(header, variables)?;
+                entry_options.headers.push(header);
             }
             // HTTP version options (such as http1.0, http1.1, http2 etc...) are activated
             // through a flag. In an `[Options]` section, the signification of such a flag is:
@@ -163,14 +168,19 @@ pub fn get_entry_options(
             }
             OptionKind::FollowLocation(value) => {
                 let value = eval_boolean_option(value, variables)?;
-                entry_options.follow_location = value;
+                if value {
+                    entry_options.follow_location =
+                        FollowLocation::Follow(CredentialForwarding::OnlyInitialHost);
+                } else {
+                    entry_options.follow_location = FollowLocation::No;
+                }
             }
             OptionKind::FollowLocationTrusted(value) => {
                 let value = eval_boolean_option(value, variables)?;
                 if value {
-                    entry_options.follow_location = true;
+                    entry_options.follow_location =
+                        FollowLocation::Follow(CredentialForwarding::AllHosts);
                 }
-                entry_options.follow_location_trusted = value;
             }
             OptionKind::Insecure(value) => {
                 let value = eval_boolean_option(value, variables)?;
@@ -228,6 +238,10 @@ pub fn get_entry_options(
             OptionKind::Output(output) => {
                 let filename = eval_template(output, variables)?;
                 let output = Output::new(&filename);
+                // If pretty mode is automatic, we disable it if the user is writing output to a file.
+                if let Output::File(_) = output {
+                    entry_options.pretty = PrettyMode::None;
+                }
                 entry_options.output = Some(output);
             }
             OptionKind::PathAsIs(value) => {
@@ -277,6 +291,9 @@ pub fn get_entry_options(
             // verbose and very-verbose option have been previously processed as they
             // can impact the logging. We compute here their values to check the potential
             // templatized error.
+            OptionKind::Verbosity(_) => {
+                // Verbosity option doesn't support templating for the moment
+            }
             OptionKind::Verbose(value) => {
                 eval_boolean_option(value, variables)?;
             }
@@ -300,6 +317,14 @@ pub fn get_entry_verbosity(
 
     for option in entry.request.options() {
         match &option.kind {
+            OptionKind::Verbosity(value) => {
+                verbosity = match value {
+                    VerbosityOption::Brief => Some(Verbosity::LowVerbose),
+                    VerbosityOption::Verbose => Some(Verbosity::Verbose),
+                    VerbosityOption::Debug => Some(Verbosity::VeryVerbose),
+                }
+            }
+            // Aliases of verbosity
             OptionKind::Verbose(value) => {
                 let value = eval_boolean_option(value, variables)?;
                 verbosity = if value {
@@ -320,6 +345,21 @@ pub fn get_entry_verbosity(
         }
     }
     Ok(verbosity)
+}
+
+/// Evaluate a template into a [`Header`], given a set of variables.
+fn eval_header_option(header: &Template, variables: &VariableSet) -> Result<Header, RunnerError> {
+    let source_info = header.source_info;
+    let header = eval_template(header, variables)?;
+    Header::parse(&header).ok_or({
+        let message = "missing `:`".to_string();
+        let kind = RunnerErrorKind::InvalidOptionValue {
+            name: "header".to_string(),
+            value: header,
+            message,
+        };
+        RunnerError::new(source_info, kind, false)
+    })
 }
 
 /// Evaluates a boolean option, using a set of `variables`.
@@ -483,9 +523,11 @@ fn eval_number(number: &AstNumber) -> Value {
 
 #[cfg(test)]
 mod tests {
-    use hurl_core::ast::{Expr, ExprKind, Placeholder, SourceInfo, Variable, Whitespace, U64};
+    use hurl_core::ast::{
+        Duration, Expr, ExprKind, Placeholder, SourceInfo, U64, Variable, Whitespace,
+    };
     use hurl_core::reader::Pos;
-    use hurl_core::types::{Duration, DurationUnit, ToSource};
+    use hurl_core::types::{DurationUnit, ToSource};
 
     use super::*;
     use crate::runner::RunnerErrorKind;

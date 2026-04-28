@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ fn run_format(input_file: &Path) -> Result<(), FormatError> {
             return Err(FormatError::IO {
                 filename: input_file.display().to_string(),
                 message: e.to_string(),
-            })
+            });
         }
         Ok(file) => file,
     };

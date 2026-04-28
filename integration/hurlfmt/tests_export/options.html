@@ -13,6 +13,7 @@
 <span class="string">delay</span>: <span class="number">1</span><span class="unit">s</span>
 <span class="string">delay</span>: <span class="number">1</span><span class="unit">m</span>
 <span class="string">delay</span>: <span class="number">1</span><span class="unit">h</span>
+<span class="string">digest</span>: <span class="boolean">false</span>
 <span class="string">location</span>: <span class="boolean">false</span>
 <span class="string">location-trusted</span>: <span class="boolean">false</span>
 <span class="string">header</span>: <span class="string">key: value</span>
@@ -54,6 +55,7 @@
 <span class="string">variable</span>: name=<span class="string">Bob</span>
 <span class="string">variable</span>:name = <span class="string">Bob</span>
 <span class="string">verbose</span>: <span class="boolean">false</span>
+<span class="string">verbosity</span>: <span class="string">brief</span>    <span class="comment"># templating verbosity not supported</span>
 <span class="string">very-verbose</span>: <span class="boolean">false</span>
 </span></span><span class="entry"><span class="request">
 <span class="method">GET</span> <span class="url">http://localhost:8000/hello</span>
@@ -66,6 +68,7 @@
 <span class="string">connect-to</span>: <span class="string">{{connect-to}}</span>
 <span class="string">connect-timeout</span>: <span class="expr">{{connect-timeout}}</span>
 <span class="string">delay</span>: <span class="expr">{{delay}}</span>
+<span class="string">digest</span>: <span class="expr">{{digest}}</span>
 <span class="string">location</span>: <span class="expr">{{location}}</span>
 <span class="string">location-trusted</span>: <span class="expr">{{location-trusted}}</span>
 <span class="string">header</span>: <span class="string">{{header}}</span>
@@ -97,5 +100,6 @@
 <span class="string">user</span>: <span class="string">{{user}}</span>
 <span class="comment">#variable: {{variable}}     NOT SUPPORTED YET</span>
 <span class="string">verbose</span>: <span class="expr">{{verbose}}</span>
+<span class="string">verbosity</span>: <span class="string">brief</span>    <span class="comment"># templating verbosity not supported</span>
 <span class="string">very-verbose</span>: <span class="expr">{{very-verbose}}</span>
 </span></span></code></pre>

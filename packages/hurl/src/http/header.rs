@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,10 +147,16 @@ impl<'a> IntoIterator for &'a HeaderVec {
     }
 }
 
+impl<'a> Extend<&'a Header> for HeaderVec {
+    fn extend<T: IntoIterator<Item = &'a Header>>(&mut self, iter: T) {
+        self.headers.extend(iter.into_iter().cloned());
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::http::header::HeaderVec;
     use crate::http::Header;
+    use crate::http::header::HeaderVec;
 
     #[test]
     fn test_simple_header_map() {

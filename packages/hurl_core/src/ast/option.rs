@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@
  */
 use std::fmt;
 
-use crate::ast::primitive::{
-    LineTerminator, Number, Placeholder, SourceInfo, Template, Whitespace, U64,
+use crate::types::{Count, DurationUnit, SourceString, ToSource};
+
+use super::primitive::{
+    LineTerminator, Number, Placeholder, SourceInfo, Template, U64, Whitespace,
 };
-use crate::types::{Count, Duration, SourceString, ToSource};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryOption {
@@ -42,6 +43,7 @@ pub enum OptionKind {
     ConnectTo(Template),
     ConnectTimeout(DurationOption),
     Delay(DurationOption),
+    Digest(BooleanOption),
     Header(Template),
     Http10(BooleanOption),
     Http11(BooleanOption),
@@ -73,6 +75,7 @@ pub enum OptionKind {
     User(Template),
     Variable(VariableDefinition),
     Verbose(BooleanOption),
+    Verbosity(VerbosityOption),
     VeryVerbose(BooleanOption),
 }
 
@@ -88,6 +91,7 @@ impl OptionKind {
             OptionKind::ConnectTo(_) => "connect-to",
             OptionKind::ConnectTimeout(_) => "connect-timeout",
             OptionKind::Delay(_) => "delay",
+            OptionKind::Digest(_) => "digest",
             OptionKind::FollowLocation(_) => "location",
             OptionKind::FollowLocationTrusted(_) => "location-trusted",
             OptionKind::Header(_) => "header",
@@ -119,6 +123,7 @@ impl OptionKind {
             OptionKind::User(_) => "user",
             OptionKind::Variable(_) => "variable",
             OptionKind::Verbose(_) => "verbose",
+            OptionKind::Verbosity(_) => "verbosity",
             OptionKind::VeryVerbose(_) => "very-verbose",
         }
     }
@@ -135,6 +140,7 @@ impl fmt::Display for OptionKind {
             OptionKind::ConnectTo(value) => value.to_string(),
             OptionKind::ConnectTimeout(value) => value.to_string(),
             OptionKind::Delay(value) => value.to_string(),
+            OptionKind::Digest(value) => value.to_string(),
             OptionKind::FollowLocation(value) => value.to_string(),
             OptionKind::FollowLocationTrusted(value) => value.to_string(),
             OptionKind::Header(value) => value.to_string(),
@@ -166,6 +172,7 @@ impl fmt::Display for OptionKind {
             OptionKind::User(value) => value.to_string(),
             OptionKind::Variable(value) => value.to_string(),
             OptionKind::Verbose(value) => value.to_string(),
+            OptionKind::Verbosity(value) => value.to_string(),
             OptionKind::VeryVerbose(value) => value.to_string(),
         };
         write!(f, "{}: {}", self.identifier(), value)
@@ -232,6 +239,30 @@ impl fmt::Display for DurationOption {
     }
 }
 
+/// Represent a duration
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Duration {
+    pub value: U64,
+    pub unit: Option<DurationUnit>,
+}
+
+impl Duration {
+    pub fn new(value: U64, unit: Option<DurationUnit>) -> Duration {
+        Duration { value, unit }
+    }
+}
+
+impl fmt::Display for Duration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let unit = if let Some(value) = self.unit {
+            value.to_string()
+        } else {
+            String::new()
+        };
+        write!(f, "{}{unit}", self.value)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VariableDefinition {
     pub source_info: SourceInfo,
@@ -274,6 +305,29 @@ impl ToSource for VariableValue {
             VariableValue::Bool(value) => value.to_string().to_source(),
             VariableValue::Number(value) => value.to_source(),
             VariableValue::String(value) => value.to_source(),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum VerbosityOption {
+    Brief,
+    Verbose,
+    Debug,
+}
+
+impl fmt::Display for VerbosityOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.identifier())
+    }
+}
+
+impl VerbosityOption {
+    pub fn identifier(&self) -> &'static str {
+        match self {
+            VerbosityOption::Brief => "brief",
+            VerbosityOption::Verbose => "verbose",
+            VerbosityOption::Debug => "debug",
         }
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,17 @@
  * limitations under the License.
  *
  */
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use hurl_core::ast::{
     Assert, Base64, Body, BooleanOption, Bytes, Capture, CertificateAttributeName, Comment, Cookie,
-    CountOption, DurationOption, Entry, EntryOption, File, FilenameParam, Filter, FilterValue, Hex,
-    HurlFile, JsonListElement, JsonValue, KeyValue, MultilineString, MultilineStringKind,
-    MultipartParam, NaturalOption, OptionKind, Placeholder, Predicate, PredicateFuncValue,
-    PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response, StatusValue,
-    VersionValue,
+    CountOption, Duration, DurationOption, Entry, EntryOption, File, FilenameParam, Filter,
+    FilterValue, Hex, HurlFile, JsonListElement, JsonValue, KeyValue, MultilineString,
+    MultilineStringKind, MultipartParam, NaturalOption, OptionKind, Placeholder, Predicate,
+    PredicateFuncValue, PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response,
+    StatusValue, VersionValue,
 };
-use hurl_core::types::{Count, Duration, ToSource};
+use hurl_core::types::{Count, ToSource};
 
 use crate::format::serialize_json::JValue;
 
@@ -193,6 +193,10 @@ impl ToJson for Bytes {
                         ..
                     } => "text",
                     MultilineString {
+                        kind: MultilineStringKind::Raw(_),
+                        ..
+                    } => "raw",
+                    MultilineString {
                         kind: MultilineStringKind::Json(_),
                         ..
                     } => "json",
@@ -315,6 +319,7 @@ impl ToJson for EntryOption {
             OptionKind::ConnectTo(value) => JValue::String(value.to_string()),
             OptionKind::ConnectTimeout(value) => value.to_json(),
             OptionKind::Delay(value) => value.to_json(),
+            OptionKind::Digest(value) => value.to_json(),
             OptionKind::FollowLocation(value) => value.to_json(),
             OptionKind::FollowLocationTrusted(value) => value.to_json(),
             OptionKind::Header(value) => JValue::String(value.to_string()),
@@ -348,6 +353,7 @@ impl ToJson for EntryOption {
                 JValue::String(format!("{}={}", value.name, value.value.to_source()))
             }
             OptionKind::Verbose(value) => value.to_json(),
+            OptionKind::Verbosity(value) => JValue::String(value.to_string()),
             OptionKind::VeryVerbose(value) => value.to_json(),
         };
 
@@ -733,8 +739,8 @@ impl ToJson for NaturalOption {
 #[cfg(test)]
 pub mod tests {
     use hurl_core::ast::{
-        LineTerminator, Method, Number, PredicateFunc, SourceInfo, Status, Template,
-        TemplateElement, Version, Whitespace, I64,
+        I64, LineTerminator, Method, Number, PredicateFunc, SourceInfo, Status, Template,
+        TemplateElement, Version, Whitespace,
     };
     use hurl_core::reader::Pos;
     use hurl_core::types::ToSource;

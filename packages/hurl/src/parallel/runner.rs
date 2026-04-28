@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
  *
  */
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 
 use super::error::JobError;
 use super::job::{Job, JobQueue, JobResult};
@@ -116,7 +116,7 @@ impl ParallelRunner {
         repeat: Count,
         test: bool,
         progress_bar: bool,
-        color: bool,
+        color_stderr: bool,
         max_width: Option<usize>,
     ) -> Self {
         // Worker are running on theirs own thread, while parallel runner is running in the main
@@ -137,7 +137,7 @@ impl ParallelRunner {
             .collect::<Vec<_>>();
 
         let mode = Mode::new(test, progress_bar);
-        let progress = ParProgress::new(MAX_RUNNING_DISPLAYED, mode, color, max_width);
+        let progress = ParProgress::new(MAX_RUNNING_DISPLAYED, mode, color_stderr, max_width);
 
         ParallelRunner {
             workers,
@@ -273,10 +273,10 @@ impl ParallelRunner {
                         }
                         None => {
                             // If we have received all the job results, we can stop the run.
-                            if let Count::Finite(jobs_count) = jobs_count {
-                                if results.len() == jobs_count {
-                                    break;
-                                }
+                            if let Count::Finite(jobs_count) = jobs_count
+                                && results.len() == jobs_count
+                            {
+                                break;
                             }
                         }
                     }

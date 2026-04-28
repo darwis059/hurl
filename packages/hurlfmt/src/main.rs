@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ use std::process;
 
 use hurl_core::input::{Input, InputKind};
 use hurl_core::text;
-use hurlfmt::cli::options::{InputFormat, OptionsError, OutputFormat};
 use hurlfmt::cli::Logger;
+use hurlfmt::cli::options::{InputFormat, OptionsError, OutputFormat};
 use hurlfmt::command::check::CheckError;
 use hurlfmt::command::export::ExportError;
 use hurlfmt::command::format::FormatError;

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,12 @@ mod cli;
 mod run;
 
 use std::collections::HashSet;
-use std::io::prelude::*;
 use std::io::IsTerminal;
+use std::io::prelude::*;
 use std::path::Path;
+use std::process::ExitCode;
 use std::time::Instant;
-use std::{env, io, process, thread};
+use std::{env, io, thread};
 
 use hurl::report::{curl, html, json, junit, tap};
 use hurl::runner;
@@ -32,15 +33,15 @@ use hurl::util::redacted::Redact;
 use hurl_core::input::Input;
 use hurl_core::text;
 
-use crate::cli::options::{CliOptions, CliOptionsError, RunContext};
+use crate::cli::options::{CliOptions, CliOptionsError, RunContext, Verbosity};
 use crate::cli::{BaseLogger, CliError};
 
-const EXIT_OK: i32 = 0;
-const EXIT_ERROR_COMMANDLINE: i32 = 1;
-const EXIT_ERROR_PARSING: i32 = 2;
-const EXIT_ERROR_RUNTIME: i32 = 3;
-const EXIT_ERROR_ASSERT: i32 = 4;
-const EXIT_ERROR_UNDEFINED: i32 = 127;
+const EXIT_OK: u8 = 0;
+const EXIT_ERROR_COMMANDLINE: u8 = 1;
+const EXIT_ERROR_PARSING: u8 = 2;
+const EXIT_ERROR_RUNTIME: u8 = 3;
+const EXIT_ERROR_ASSERT: u8 = 4;
+const EXIT_ERROR_UNDEFINED: u8 = 127;
 
 /// Structure that stores the result of an Hurl file execution, and the content of the file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,7 +54,7 @@ struct HurlRun {
 }
 
 /// Executes Hurl entry point.
-fn main() {
+fn main() -> ExitCode {
     text::init_crate_colored();
 
     // Construct the run context environment, this should be the sole place where we read
@@ -71,30 +72,38 @@ fn main() {
         Err(e) => match e {
             CliOptionsError::DisplayHelp(e) | CliOptionsError::DisplayVersion(e) => {
                 print!("{e}");
-                process::exit(EXIT_OK);
+                return ExitCode::from(EXIT_OK);
             }
             _ => {
                 eprintln!("{e}");
-                process::exit(EXIT_ERROR_COMMANDLINE);
+                return ExitCode::from(EXIT_ERROR_COMMANDLINE);
             }
         },
     };
 
     // We create a basic logger that can just display info, warning or error generic messages.
     // We'll use a more advanced logger for rich error report when running Hurl files.
-    let verbose = opts.verbose || opts.very_verbose || opts.interactive;
-    let base_logger = BaseLogger::new(opts.color, verbose);
-    let current_dir = env::current_dir();
-    let current_dir = unwrap_or_exit(current_dir, EXIT_ERROR_UNDEFINED, &base_logger);
+    let verbose =
+        opts.verbosity == Some(Verbosity::Verbose) || opts.verbosity == Some(Verbosity::Debug);
+    let base_logger = BaseLogger::new(opts.color_stderr, verbose);
+    let current_dir = match env::current_dir() {
+        Ok(c) => c,
+        Err(err) => {
+            base_logger.error(&err.to_string());
+            return ExitCode::from(EXIT_ERROR_UNDEFINED);
+        }
+    };
     let current_dir = current_dir.as_path();
     let start = Instant::now();
 
     let runs = if opts.parallel {
-        let available = unwrap_or_exit(
-            thread::available_parallelism(),
-            EXIT_ERROR_UNDEFINED,
-            &base_logger,
-        );
+        let available = match thread::available_parallelism() {
+            Ok(a) => a,
+            Err(err) => {
+                base_logger.error(&err.to_string());
+                return ExitCode::from(EXIT_ERROR_UNDEFINED);
+            }
+        };
         let workers_count = opts.jobs.unwrap_or(available.get());
         base_logger.debug(&format!("Parallel run using {workers_count} workers"));
 
@@ -107,14 +116,25 @@ fn main() {
         // result. The false assertions "errors" are displayed in these functions and are not considered
         // as program errors.
         Ok(r) => r,
+        Err(CliError::InvalidOption(msg)) => {
+            base_logger.error(&msg);
+            return ExitCode::from(EXIT_ERROR_COMMANDLINE);
+        }
         // So, we're dealing here with I/O errors: input reading, parsing etc...
         // We consider input read as "parsing" and don't have a specific exit code for the moment.
-        Err(CliError::InputRead(msg)) => exit_with_error(&msg, EXIT_ERROR_PARSING, &base_logger),
+        Err(CliError::InputRead(msg)) | Err(CliError::GenericIO(msg)) => {
+            base_logger.error(&msg);
+            return ExitCode::from(EXIT_ERROR_PARSING);
+        }
         // In case of parsing error, there is no error because the display of parsing error has been
         // done in the execution of the Hurl files, inside the crates (and not in the main).
-        Err(CliError::Parsing) => exit_with_error("", EXIT_ERROR_PARSING, &base_logger),
-        Err(CliError::OutputWrite(msg)) => exit_with_error(&msg, EXIT_ERROR_RUNTIME, &base_logger),
-        Err(CliError::GenericIO(msg)) => exit_with_error(&msg, EXIT_ERROR_PARSING, &base_logger),
+        Err(CliError::Parsing) => {
+            return ExitCode::from(EXIT_ERROR_PARSING);
+        }
+        Err(CliError::OutputWrite(msg)) => {
+            base_logger.error(&msg);
+            return ExitCode::from(EXIT_ERROR_RUNTIME);
+        }
     };
 
     // Compute duration of the test here to not take reports writings into account.
@@ -123,7 +143,10 @@ fn main() {
     // Write HTML, JUnit, TAP reports on disk.
     if has_report(&opts) {
         let ret = export_results(&runs, &opts, &base_logger);
-        unwrap_or_exit(ret, EXIT_ERROR_UNDEFINED, &base_logger);
+        if let Err(err) = ret {
+            base_logger.error(&err.to_string());
+            return ExitCode::from(EXIT_ERROR_UNDEFINED);
+        }
     }
 
     if opts.test {
@@ -131,26 +154,8 @@ fn main() {
         base_logger.info(summary.as_str());
     }
 
-    process::exit(exit_code(&runs));
-}
-
-/// Unwraps a `result` or exit with message.
-fn unwrap_or_exit<T, E>(result: Result<T, E>, code: i32, logger: &BaseLogger) -> T
-where
-    E: std::fmt::Display,
-{
-    match result {
-        Ok(v) => v,
-        Err(e) => exit_with_error(&e.to_string(), code, logger),
-    }
-}
-
-/// Prints an error message and exits the current process with an exit code.
-fn exit_with_error(message: &str, code: i32, logger: &BaseLogger) -> ! {
-    if !message.is_empty() {
-        logger.error(message);
-    }
-    process::exit(code);
+    let exit_code = exit_code(&runs);
+    ExitCode::from(exit_code)
 }
 
 /// Returns `true` if any kind of report should be created, `false` otherwise.
@@ -271,7 +276,7 @@ fn create_json_report(runs: &[HurlRun], dir_path: &Path, secrets: &[&str]) -> Re
 }
 
 /// Returns an exit code for a list of HurlResult.
-fn exit_code(runs: &[HurlRun]) -> i32 {
+fn exit_code(runs: &[HurlRun]) -> u8 {
     let mut count_errors_runner = 0;
     let mut count_errors_assert = 0;
     for run in runs.iter() {
@@ -328,10 +333,8 @@ fn create_cookies_file(
     for run in runs.iter() {
         s.push_str(&format!("# Cookies for file <{}>", run.filename));
         s.push('\n');
-        for cookie in run.hurl_result.cookies.iter() {
-            s.push_str(&cookie.to_netscape_str().redact(secrets));
-            s.push('\n');
-        }
+        let cookies = run.hurl_result.cookie_store.to_netscape().redact(secrets);
+        s.push_str(&cookies);
     }
 
     if let Err(why) = file.write_all(s.as_bytes()) {

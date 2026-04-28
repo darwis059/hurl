@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,10 @@ pub fn eval_count(
         Value::Bytes(values) => Ok(Some(Value::Number(Number::Integer(values.len() as i64)))),
         Value::Nodeset(size) => Ok(Some(Value::Number(Number::Integer(*size as i64)))),
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.kind().to_string());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "list, bytes or nodeset".to_string(),
+            };
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
@@ -42,8 +45,8 @@ mod tests {
     use hurl_core::reader::Pos;
 
     use super::*;
-    use crate::runner::filter::eval::eval_filter;
     use crate::runner::VariableSet;
+    use crate::runner::filter::eval::eval_filter;
 
     #[test]
     fn eval_filter_count() {
@@ -78,7 +81,10 @@ mod tests {
         );
         assert_eq!(
             error.kind,
-            RunnerErrorKind::FilterInvalidInput("boolean".to_string())
+            RunnerErrorKind::FilterInvalidInputType {
+                actual: "boolean".to_string(),
+                expected: "list, bytes or nodeset".to_string()
+            }
         );
     }
 }

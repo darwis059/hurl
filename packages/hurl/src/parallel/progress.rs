@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,10 +58,14 @@ impl ParProgress {
     pub fn new(
         max_running_displayed: usize,
         mode: Mode,
-        color: bool,
+        color_stderr: bool,
         max_width: Option<usize>,
     ) -> Self {
-        let format = if color { Format::Ansi } else { Format::Plain };
+        let format = if color_stderr {
+            Format::Ansi
+        } else {
+            Format::Plain
+        };
         ParProgress {
             max_running_displayed,
             mode,
@@ -291,10 +295,10 @@ fn build_progress(
             progress.push("\n");
 
             // We wrap the progress string with new lines if necessary
-            if let Some(max_width) = max_width {
-                if progress.len() >= max_width {
-                    progress = progress.wrap(max_width);
-                }
+            if let Some(max_width) = max_width
+                && progress.len() >= max_width
+            {
+                progress = progress.wrap(max_width);
             }
 
             let progress = progress.to_string(format);
@@ -326,7 +330,7 @@ fn progress_bar(current: Index, last: Index) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{mpsc, Arc, Mutex};
+    use std::sync::{Arc, Mutex, mpsc};
 
     use crate::parallel::job::Job;
     use crate::parallel::progress::{build_progress, progress_bar};

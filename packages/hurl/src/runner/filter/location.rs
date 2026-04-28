@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,14 @@ pub fn eval_location(
     source_info: SourceInfo,
     assert: bool,
 ) -> Result<Option<Value>, RunnerError> {
-    if let Value::HttpResponse(resp) = value {
-        Ok(resp.location().map(|loc| Value::String(loc.raw())))
-    } else {
-        let kind = RunnerErrorKind::FilterInvalidInput(value.kind().to_string());
-        Err(RunnerError::new(source_info, kind, assert))
+    match value {
+        Value::HttpResponse(resp) => Ok(resp.location().map(|loc| Value::String(loc.raw()))),
+        v => {
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "http response".to_string(),
+            };
+            Err(RunnerError::new(source_info, kind, assert))
+        }
     }
 }

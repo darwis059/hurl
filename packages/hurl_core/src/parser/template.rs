@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  */
 use crate::ast::{Placeholder, SourceInfo, TemplateElement};
 use crate::parser::primitives::zero_or_more_spaces;
-use crate::parser::{error, expr, ParseResult};
+use crate::parser::{ParseResult, error, expr};
 use crate::reader::{Pos, Reader};
 use crate::types::SourceString;
 

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,10 +39,11 @@ pub fn parse_json_report(filename: &Path) -> Result<Vec<Value>, ReportError> {
     // TODO: if the existing JSON report is not valid, we consider that there is no
     // existing report to append, without displaying any error or warning. Maybe a better option
     // would be to raise an error here and ask the user to explicitly deal with this error.
-    if let Ok(Some(Value::Array(values))) = serde_json::from_str(&s) {
-        if values.iter().all(HurlResult::is_deserializable) {
-            return Ok(values);
-        }
+    if let Ok(Some(Value::Array(values))) = serde_json::from_str(&s)
+        && values.iter().all(HurlResult::is_deserializable)
+    {
+        return Ok(values);
     }
+
     Ok(vec![])
 }

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
  * limitations under the License.
  *
  */
-//! Hurl common types.
+//! Hurl core types that can be used in different modules. These types are rather generic like `Count`
+//! (a counter) or `Index` (a one-based index) and shared across `hurl`, `hurlfmt` and `hurl_core` crates.
 use core::fmt;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -24,13 +25,23 @@ use std::num::NonZero;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
-use crate::ast::U64;
-
 /// Represents a count operation, either finite or infinite.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Count {
     Finite(usize),
     Infinite,
+}
+
+impl TryFrom<i32> for Count {
+    type Error = String;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            n if n < -1 => Err(format!("{n} is not in -1..={}", i32::MAX)),
+            -1 => Ok(Count::Infinite),
+            n => Ok(Count::Finite(n as usize)),
+        }
+    }
 }
 
 impl fmt::Display for Count {
@@ -43,30 +54,6 @@ impl fmt::Display for Count {
                 write!(f, "-1")
             }
         }
-    }
-}
-
-/// Represent a duration
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Duration {
-    pub value: U64,
-    pub unit: Option<DurationUnit>,
-}
-
-impl Duration {
-    pub fn new(value: U64, unit: Option<DurationUnit>) -> Duration {
-        Duration { value, unit }
-    }
-}
-
-impl fmt::Display for Duration {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let unit = if let Some(value) = self.unit {
-            value.to_string()
-        } else {
-            String::new()
-        };
-        write!(f, "{}{unit}", self.value)
     }
 }
 

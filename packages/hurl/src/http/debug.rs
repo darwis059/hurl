@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,11 +29,11 @@ use super::mimetype;
 /// If `debug` is true, logs are printed using debug (with * prefix), otherwise logs are printed
 /// in info.
 pub fn log_body(body: &[u8], headers: &HeaderVec, debug: bool, logger: &mut Logger) {
-    if let Some(content_type) = headers.content_type() {
-        if !mimetype::is_kind_of_text(content_type) {
-            log_bytes(body, 64, debug, logger);
-            return;
-        }
+    if let Some(content_type) = headers.content_type()
+        && !mimetype::is_kind_of_text(content_type)
+    {
+        log_bytes(body, 64, debug, logger);
+        return;
     }
     // Decode body as text:
     let encoding = match headers.character_encoding() {

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ pub fn run(
 
     // Experimental features with cookie storage
     if let Some(s) = request::get_cmd_cookie_storage_set(&entry.request) {
-        if let Ok(cookie) = http::Cookie::from_netscape_str(&s) {
+        if let Ok(cookie) = http::Cookie::from_netscape(&s) {
             http_client.add_cookie(&cookie, logger);
         } else {
             logger.warning(&format!("Cookie string can not be parsed: '{s}'"));
@@ -146,26 +146,26 @@ pub fn run(
     let mut cache = BodyCache::new();
     let mut asserts = vec![];
 
-    if !runner_options.ignore_asserts {
-        if let Some(response_spec) = &entry.response {
-            let mut status_asserts =
-                response::eval_version_status_asserts(response_spec, http_response);
-            let errors = asserts_to_errors(&status_asserts);
-            asserts.append(&mut status_asserts);
-            if !errors.is_empty() {
-                logger.debug("");
-                return EntryResult {
-                    entry_index,
-                    source_info,
-                    calls,
-                    captures: vec![],
-                    asserts,
-                    errors,
-                    transfer_duration,
-                    compressed,
-                    curl_cmd,
-                };
-            }
+    if !runner_options.no_assert
+        && let Some(response_spec) = &entry.response
+    {
+        let mut status_asserts =
+            response::eval_version_status_asserts(response_spec, http_response);
+        let errors = asserts_to_errors(&status_asserts);
+        asserts.append(&mut status_asserts);
+        if !errors.is_empty() {
+            logger.debug("");
+            return EntryResult {
+                entry_index,
+                source_info,
+                calls,
+                captures: vec![],
+                asserts,
+                errors,
+                transfer_duration,
+                compressed,
+                curl_cmd,
+            };
         }
     };
 
@@ -199,18 +199,18 @@ pub fn run(
     logger.debug("");
 
     // Compute asserts
-    if !runner_options.ignore_asserts {
-        if let Some(response_spec) = &entry.response {
-            warn_deprecated(response_spec, logger);
-            let mut other_asserts = response::eval_asserts(
-                response_spec,
-                variables,
-                &responses,
-                &mut cache,
-                context_dir,
-            );
-            asserts.append(&mut other_asserts);
-        }
+    if !runner_options.no_assert
+        && let Some(response_spec) = &entry.response
+    {
+        warn_deprecated(response_spec, logger);
+        let mut other_asserts = response::eval_asserts(
+            response_spec,
+            variables,
+            &responses,
+            &mut cache,
+            context_dir,
+        );
+        asserts.append(&mut other_asserts);
     };
 
     let errors = asserts_to_errors(&asserts);
@@ -255,8 +255,8 @@ impl ClientOptions {
             connect_timeout: runner_options.connect_timeout,
             connects_to: runner_options.connects_to.clone(),
             cookie_input_file: runner_options.cookie_input_file.clone(),
+            digest: runner_options.digest,
             follow_location: runner_options.follow_location,
-            follow_location_trusted: runner_options.follow_location_trusted,
             headers: runner_options.headers.clone(),
             http_version: runner_options.http_version,
             ip_resolve: runner_options.ip_resolve,
@@ -278,13 +278,14 @@ impl ClientOptions {
             ssl_no_revoke: runner_options.ssl_no_revoke,
             timeout: runner_options.timeout,
             unix_socket: runner_options.unix_socket.clone(),
+            use_cookie_store: runner_options.use_cookie_store,
             user: runner_options.user.clone(),
             user_agent: runner_options.user_agent.clone(),
-            verbosity: match verbosity {
-                Some(Verbosity::Verbose) => Some(http::Verbosity::Verbose),
-                Some(Verbosity::VeryVerbose) => Some(http::Verbosity::VeryVerbose),
-                _ => None,
-            },
+            verbosity: verbosity.map(|v| match v {
+                Verbosity::LowVerbose => http::Verbosity::LowVerbose,
+                Verbosity::Verbose => http::Verbosity::Verbose,
+                Verbosity::VeryVerbose => http::Verbosity::VeryVerbose,
+            }),
         }
     }
 }
@@ -311,19 +312,19 @@ fn log_request(
         logger.debug(&header.to_string());
     }
     if !request.querystring.is_empty() {
-        logger.debug("[QueryStringParams]");
+        logger.debug("[Query]");
         for param in &request.querystring {
             logger.debug(&param.to_string());
         }
     }
     if !request.form.is_empty() {
-        logger.debug("[FormParams]");
+        logger.debug("[Form]");
         for param in &request.form {
             logger.debug(&param.to_string());
         }
     }
     if !request.multipart.is_empty() {
-        logger.debug("[MultipartFormData]");
+        logger.debug("[Multipart]");
         for param in &request.multipart {
             logger.debug(&param.to_string());
         }
@@ -371,12 +372,30 @@ fn warn_deprecated(response_spec: &Response, logger: &mut Logger) {
         );
     }
     if response_spec
+        .captures()
+        .iter()
+        .any(captures_has_decode_filter)
+    {
+        logger.warning(
+            "<decode> filter in captures is now deprecated in favor of <charsetDecode> filter",
+        );
+    }
+    if response_spec
         .asserts()
         .iter()
         .any(asserts_has_format_filter)
     {
         logger.warning(
             "<format> filter in asserts is now deprecated in favor of <dateFormat> filter",
+        );
+    }
+    if response_spec
+        .asserts()
+        .iter()
+        .any(asserts_has_decode_filter)
+    {
+        logger.warning(
+            "<decode> filter in asserts is now deprecated in favor of <charsetDecode> filter",
         );
     }
 }
@@ -391,4 +410,16 @@ fn captures_has_format_filter(a: &Capture) -> bool {
     a.filters
         .iter()
         .any(|(_, f)| matches!(f.value, FilterValue::Format { .. }))
+}
+
+fn asserts_has_decode_filter(a: &Assert) -> bool {
+    a.filters
+        .iter()
+        .any(|(_, f)| matches!(f.value, FilterValue::Decode { .. }))
+}
+
+fn captures_has_decode_filter(a: &Capture) -> bool {
+    a.filters
+        .iter()
+        .any(|(_, f)| matches!(f.value, FilterValue::Decode { .. }))
 }

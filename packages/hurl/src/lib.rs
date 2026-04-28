@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ mod html;
 pub mod http;
 mod json;
 mod jsonpath;
-mod jsonpath2;
 pub mod output;
 #[doc(hidden)]
 pub mod parallel;

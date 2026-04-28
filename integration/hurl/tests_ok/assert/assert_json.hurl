@@ -53,7 +53,7 @@ jsonpath "$.errors[0,1].id" contains "error1"
 jsonpath "$.errors[:2].id" count == 2
 jsonpath "$.errors[0:].id" count == 2
 jsonpath "$.errors[?(@.id)].id" nth 0 == "error1"
-jsonpath "$.errors[?(@.id=='error1')].id" nth 0 == "error1"
+jsonpath "$.errors[?(@.id=='error1')].id" == "error1"
 jsonpath "$.failures[*].id" contains "failure1"
 jsonpath "$.duration" == 1.5
 jsonpath "$.duration" <= 2.0
@@ -68,7 +68,7 @@ jsonpath "$.tags[0]" > "te"
 jsonpath "$.tags[0]" < "testabc"
 jsonpath "$.tags[0]" <= "test"
 jsonpath "$.tags[0]" > "{{foo}}"
-jsonpath "$.profile-id" == "123abc"
+#jsonpath "$.profile-id" == "123abc" # hyphen not valid in shorthand notation
 jsonpath "$['profile-id']" == "123abc"
 jsonpath "$.errors[0]" not isEmpty
 jsonpath "$.empty" isEmpty
@@ -130,17 +130,21 @@ GET http://localhost:8000/assert-json/list
 HTTP 200
 [Asserts]
 jsonpath "$" count == 2
-jsonpath "$.[0].name" == "Bob"
 jsonpath "$[0].name" == "Bob"
-jsonpath "$.[?(@.id == 1)].name" nth 0 == "Bob"
-jsonpath "$[?(@.id == 1)].name" nth 0 == "Bob"
-
+jsonpath "$[?(@.id == 1)].name" == "Bob"
+[
+  { "id": 1, "name": "Bob"},
+  { "id": 2, "name": "Bill"}
+]
 
 GET http://localhost:8000/assert-json/filter
 HTTP 200
 [Asserts]
-jsonpath "$.fruit[?(@.price.US==200)].name" nth 0 == "grape"
-jsonpath "$.fruit.[?(@.US == 100)]" count == 0   # To be clarified with spec: the first fruit is return by jsonpath.com
+jsonpath "$.fruit[?(@.price.US==100)].name" == "apple"
+jsonpath "$.fruit..[?(@.US == 100)].US" == 100
+jsonpath "$.fruit[?(@.US == 100)]" not exists
+jsonpath "$.fruit[?(@.countries[0]=='New Zealand' || @.countries[1]=='New Zealand')]" count == 2
+jsonpath "$.fruit[?(@.countries[?(@=='New Zealand')])]" count == 2
 {
     "fruit": [
         {
@@ -148,14 +152,24 @@ jsonpath "$.fruit.[?(@.US == 100)]" count == 0   # To be clarified with spec: th
             "price": {
                 "US": 100,
                 "UN": 110
-            }
+            },
+            "countries": [ "China", "New Zealand"]
         },
         {
             "name": "grape",
             "price": {
                 "US": 200,
                 "UN": 150
-            }
+            },
+            "countries": [ "France", "Italy"]
+        },
+        {
+            "name": "orange",
+            "countries": [ "Spain"]
+        },
+        {
+            "name": "kiwi",
+            "countries": [ "New Zealand", "Italy"]
         }
     ]
 }
@@ -166,20 +180,20 @@ HTTP 200
 [Asserts]
 
 jsonpath "$..*[?(@.name)]" count == 5
-jsonpath "$..*[?(@.name=='car')].id" nth 0 == 1
-jsonpath "$..*[?(@.name=='wheel')].id" nth 0 == 4
+jsonpath "$..*[?(@.name=='car')].id" == 1
+jsonpath "$..*[?(@.name=='wheel')].id" == 4
 
 jsonpath "$..items[?(@.name)]" count == 5
-jsonpath "$..items[?(@.name=='car')].id" nth 0 == 1
-jsonpath "$..items[?(@.name=='wheel')].id" nth 0 == 4
+jsonpath "$..items[?(@.name=='car')].id" == 1
+jsonpath "$..items[?(@.name=='wheel')].id" == 4
 
 jsonpath "$.main.items[?(@.name)]" count == 3
-jsonpath "$.main.items[?(@.name=='car')].id" nth 0 == 1
-jsonpath "$.main.items[?(@.name=='wheel')].id" isEmpty
+jsonpath "$.main.items[?(@.name=='car')].id" == 1
+jsonpath "$.main.items[?(@.name=='wheel')].id" not exists
 
 jsonpath "$.main..items[?(@.name)]" count == 4
-jsonpath "$.main..items[?(@.name=='car')].id" nth 0 == 1
-jsonpath "$.main..items[?(@.name=='wheel')].id" nth 0 == 4
+jsonpath "$.main..items[?(@.name=='car')].id" == 1
+jsonpath "$.main..items[?(@.name=='wheel')].id" == 4
 
 {
   "main": {
@@ -222,3 +236,21 @@ jsonpath "$.big_integer" == 1000000000000000000000
 {
   "big_integer": 1000000000000000000000
 }
+
+GET http://localhost:8000/assert-json/list-in-list
+HTTP 200
+[Asserts]
+jsonpath "$.list" count == 3                   # 1 result: [1, 2, 3]
+jsonpath "$.list[0]" == 1                      # 1 result: 1
+jsonpath "$.list[*]" count == 3                # 3 results: 1, 2, 3
+jsonpath "$.list[*][0]" not exists             # integer can not be indexed
+jsonpath "$.list_in_list" count == 1           # 1 result: [[1, 2, 3]]
+jsonpath "$.list_in_list[*]" count == 3        # 1 result: [1, 2, 3]
+jsonpath "$.list_in_list[*][0]" == 1           # 1 result: 1
+jsonpath "$.list_in_list[0]" count == 3        # 1 result: [1, 2, 3]
+jsonpath "$.list_in_list[0][0]" == 1           # 1 result: 1
+{
+    "list": [1, 2, 3],
+    "list_in_list": [[1, 2, 3]]
+}
+

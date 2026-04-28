@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,13 @@
  *
  */
 
-pub mod query;
+mod comparison;
+mod expr;
+mod function;
+mod literal;
+mod query;
+mod segment;
 mod selector;
+mod singular_query;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum JsonpathResult {
-    SingleEntry(serde_json::Value),     // returned by a "definite" path
-    Collection(Vec<serde_json::Value>), // returned by a "indefinite" path
-}
+pub type NodeList = Vec<serde_json::Value>;

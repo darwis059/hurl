@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  */
 use hurl_core::ast::{IntegerValue, Placeholder, SourceInfo};
 
-use crate::runner::{expr, Number, RunnerError, RunnerErrorKind, Value, VariableSet};
+use crate::runner::{Number, RunnerError, RunnerErrorKind, Value, VariableSet, expr};
 
 /// Returns the element from a collection `value` at a zero-based index.
 pub fn eval_nth(
@@ -33,12 +33,15 @@ pub fn eval_nth(
         Value::List(values) => match try_nth(values, n) {
             Ok(value) => Ok(Some(value.clone())),
             Err(err) => {
-                let kind = RunnerErrorKind::FilterInvalidInput(err);
+                let kind = RunnerErrorKind::FilterInvalidInputValue(err);
                 Err(RunnerError::new(source_info, kind, assert))
             }
         },
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.repr());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "list".to_string(),
+            };
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
@@ -78,7 +81,7 @@ fn eval_integer_value(n: &IntegerValue, variables: &VariableSet) -> Result<i64, 
 
 #[cfg(test)]
 mod tests {
-    use hurl_core::ast::{Filter, FilterValue, IntegerValue, SourceInfo, Whitespace, I64};
+    use hurl_core::ast::{Filter, FilterValue, I64, IntegerValue, SourceInfo, Whitespace};
     use hurl_core::reader::Pos;
     use hurl_core::types::ToSource;
 
@@ -130,7 +133,7 @@ mod tests {
             .unwrap(),
             RunnerError::new(
                 SourceInfo::new(Pos::new(1, 1), Pos::new(1, 1)),
-                RunnerErrorKind::FilterInvalidInput("out of bound - size is 2".to_string()),
+                RunnerErrorKind::FilterInvalidInputValue("out of bound - size is 2".to_string()),
                 false
             )
         );
@@ -177,7 +180,7 @@ mod tests {
             .unwrap(),
             RunnerError::new(
                 SourceInfo::new(Pos::new(1, 1), Pos::new(1, 1)),
-                RunnerErrorKind::FilterInvalidInput("out of bound - size is 1".to_string()),
+                RunnerErrorKind::FilterInvalidInputValue("out of bound - size is 1".to_string()),
                 false
             )
         );

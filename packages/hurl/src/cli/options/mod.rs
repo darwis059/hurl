@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,36 +15,36 @@
  * limitations under the License.
  *
  */
+mod args;
 mod commands;
+mod config_file;
 mod context;
 mod duration;
+mod env_vars;
 mod error;
-mod matches;
+mod secret;
 mod variables;
 mod variables_file;
 
 use std::collections::HashMap;
-use std::env;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 
-use clap::builder::styling::{AnsiColor, Effects};
-use clap::builder::Styles;
-use clap::ArgMatches;
-pub use error::CliOptionsError;
 use hurl::http;
-use hurl::http::RequestedHttpVersion;
+use hurl::http::{CredentialForwarding, FollowLocation, Header, HeaderVec, RequestedHttpVersion};
 use hurl::pretty::PrettyMode;
 use hurl::runner::Output;
-use hurl::util::logger::{LoggerOptions, LoggerOptionsBuilder, Verbosity};
+use hurl::util::logger;
+use hurl::util::logger::{LoggerOptions, LoggerOptionsBuilder};
 use hurl::util::path::ContextDir;
-use hurl_core::ast::Entry;
 use hurl_core::input::{Input, InputKind};
 use hurl_core::types::{BytesPerSec, Count};
 
-use crate::cli;
+use crate::cli::CliError;
 pub use crate::cli::options::context::RunContext;
 use crate::runner::{RunnerOptions, RunnerOptionsBuilder, Value};
+pub use error::CliOptionsError;
 
 /// Represents the list of all options that can be used in Hurl command line.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,7 +53,8 @@ pub struct CliOptions {
     pub cacert_file: Option<String>,
     pub client_cert_file: Option<String>,
     pub client_key_file: Option<String>,
-    pub color: bool,
+    pub color_stdout: bool,
+    pub color_stderr: bool,
     pub compressed: bool,
     pub connect_timeout: Duration,
     pub connects_to: Vec<String>,
@@ -62,6 +63,7 @@ pub struct CliOptions {
     pub cookie_output_file: Option<PathBuf>,
     pub curl_file: Option<PathBuf>,
     pub delay: Duration,
+    pub digest: bool,
     pub error_format: ErrorFormat,
     pub file_root: Option<String>,
     pub follow_location: bool,
@@ -70,11 +72,10 @@ pub struct CliOptions {
     pub headers: Vec<String>,
     pub html_dir: Option<PathBuf>,
     pub http_version: Option<HttpVersion>,
-    pub ignore_asserts: bool,
+    pub no_assert: bool,
     pub include: bool,
     pub input_files: Vec<Input>,
     pub insecure: bool,
-    pub interactive: bool,
     pub ip_resolve: Option<IpResolve>,
     pub jobs: Option<usize>,
     pub json_report_dir: Option<PathBuf>,
@@ -86,6 +87,7 @@ pub struct CliOptions {
     pub netrc: bool,
     pub netrc_file: Option<String>,
     pub netrc_optional: bool,
+    pub no_cookie_store: bool,
     pub no_proxy: Option<String>,
     pub ntlm: bool,
     pub output: Option<Output>,
@@ -110,8 +112,33 @@ pub struct CliOptions {
     pub user: Option<String>,
     pub user_agent: Option<String>,
     pub variables: HashMap<String, Value>,
-    pub verbose: bool,
-    pub very_verbose: bool,
+    pub verbosity: Option<Verbosity>,
+}
+
+/// Log verbosity level
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Verbosity {
+    Brief,
+    Verbose,
+    Debug,
+}
+
+impl FromStr for Verbosity {
+    type Err = CliOptionsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "brief" => Ok(Verbosity::Brief),
+            "verbose" => Ok(Verbosity::Verbose),
+            "debug" => Ok(Verbosity::Debug),
+            _ => {
+                let message = format!(
+                    "Invalid value '{s}' for verbosity [possible values: brief, verbose, debug]"
+                );
+                Err(CliOptionsError::Error(message))
+            }
+        }
+    }
 }
 
 /// Error format: long or rich.
@@ -121,11 +148,27 @@ pub enum ErrorFormat {
     Long,
 }
 
-impl From<ErrorFormat> for hurl::util::logger::ErrorFormat {
+impl FromStr for ErrorFormat {
+    type Err = CliOptionsError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "long" => Ok(ErrorFormat::Long),
+            "short" => Ok(ErrorFormat::Short),
+            _ => {
+                let message =
+                    format!("Invalid value '{s}' for error-format [possible values: long, short]");
+                Err(CliOptionsError::Error(message))
+            }
+        }
+    }
+}
+
+impl From<ErrorFormat> for logger::ErrorFormat {
     fn from(value: ErrorFormat) -> Self {
         match value {
-            ErrorFormat::Short => hurl::util::logger::ErrorFormat::Short,
-            ErrorFormat::Long => hurl::util::logger::ErrorFormat::Long,
+            ErrorFormat::Short => logger::ErrorFormat::Short,
+            ErrorFormat::Long => logger::ErrorFormat::Long,
         }
     }
 }
@@ -181,254 +224,12 @@ fn get_version() -> String {
 /// Parse the Hurl CLI options and returns a [`CliOptions`] result, given a run `context`
 /// (environment variables).
 pub fn parse(context: &RunContext) -> Result<CliOptions, CliOptionsError> {
-    let styles = Styles::styled()
-        .header(AnsiColor::Green.on_default() | Effects::BOLD)
-        .usage(AnsiColor::Green.on_default() | Effects::BOLD)
-        .literal(AnsiColor::Cyan.on_default() | Effects::BOLD)
-        .placeholder(AnsiColor::Cyan.on_default());
-
-    let mut command = clap::Command::new("hurl")
-        .version(get_version())
-        .disable_colored_help(true)
-        .styles(styles)
-        .about("Hurl, run and test HTTP requests with plain text")
-        // HTTP options
-        .arg(commands::aws_sigv4())
-        .arg(commands::cacert_file())
-        .arg(commands::client_cert_file())
-        .arg(commands::compressed())
-        .arg(commands::connect_timeout())
-        .arg(commands::connect_to())
-        .arg(commands::header())
-        .arg(commands::http10())
-        .arg(commands::http11())
-        .arg(commands::http2())
-        .arg(commands::http3())
-        .arg(commands::input_files())
-        .arg(commands::insecure())
-        .arg(commands::ipv4())
-        .arg(commands::ipv6())
-        .arg(commands::client_key_file())
-        .arg(commands::limit_rate())
-        .arg(commands::follow_location())
-        .arg(commands::follow_location_trusted())
-        .arg(commands::max_filesize())
-        .arg(commands::max_redirects())
-        .arg(commands::max_time())
-        .arg(commands::negotiate())
-        .arg(commands::noproxy())
-        .arg(commands::ntlm())
-        .arg(commands::path_as_is())
-        .arg(commands::pinned_pub_key())
-        .arg(commands::proxy())
-        .arg(commands::resolve())
-        .arg(commands::ssl_no_revoke())
-        .arg(commands::unix_socket())
-        .arg(commands::user())
-        .arg(commands::user_agent())
-        // Output options
-        .arg(commands::color())
-        .arg(commands::curl())
-        .arg(commands::error_format())
-        .arg(commands::include())
-        .arg(commands::json())
-        .arg(commands::no_color())
-        .arg(commands::no_output())
-        .arg(commands::no_pretty())
-        .arg(commands::output())
-        .arg(commands::pretty())
-        .arg(commands::progress_bar())
-        .arg(commands::verbose())
-        .arg(commands::very_verbose())
-        // Run options
-        .arg(commands::continue_on_error())
-        .arg(commands::delay())
-        .arg(commands::from_entry())
-        .arg(commands::ignore_asserts())
-        .arg(commands::interactive())
-        .arg(commands::jobs())
-        .arg(commands::parallel())
-        .arg(commands::repeat())
-        .arg(commands::retry())
-        .arg(commands::retry_interval())
-        .arg(commands::secret())
-        .arg(commands::secrets_file())
-        .arg(commands::test())
-        .arg(commands::to_entry())
-        .arg(commands::variable())
-        .arg(commands::variables_file())
-        // Report options
-        .arg(commands::report_html())
-        .arg(commands::report_json())
-        .arg(commands::report_junit())
-        .arg(commands::report_tap())
-        // Other options
-        .arg(commands::cookies_input_file())
-        .arg(commands::cookies_output_file())
-        .arg(commands::file_root())
-        .arg(commands::glob())
-        .arg(commands::netrc())
-        .arg(commands::netrc_file())
-        .arg(commands::netrc_optional());
-
-    let arg_matches = command.try_get_matches_from_mut(env::args_os());
-    let arg_matches = match arg_matches {
-        Ok(args) => args,
-        Err(error) => return Err(CliOptionsError::from_clap(error, context.is_with_color())),
-    };
-
-    // If we've no file input (either from the standard input or from the command line arguments),
-    // we just print help and exit.
-    if !matches::has_input_files(&arg_matches, context) {
-        let help = if context.is_with_color() {
-            command.render_help().ansi().to_string()
-        } else {
-            command.render_help().to_string()
-        };
-        return Err(CliOptionsError::NoInput(help));
-    }
-
-    let opts = parse_matches(&arg_matches, context)?;
-    if opts.input_files.is_empty() {
-        return Err(CliOptionsError::Error(
-            "No input files provided".to_string(),
-        ));
-    }
-
-    Ok(opts)
-}
-
-fn parse_matches(
-    arg_matches: &ArgMatches,
-    context: &RunContext,
-) -> Result<CliOptions, CliOptionsError> {
-    let aws_sigv4 = matches::aws_sigv4(arg_matches);
-    let cacert_file = matches::cacert_file(arg_matches)?;
-    let client_cert_file = matches::client_cert_file(arg_matches)?;
-    let client_key_file = matches::client_key_file(arg_matches)?;
-    let color = matches::color(arg_matches, context);
-    let compressed = matches::compressed(arg_matches);
-    let connect_timeout = matches::connect_timeout(arg_matches)?;
-    let connects_to = matches::connects_to(arg_matches);
-    let continue_on_error = matches::continue_on_error(arg_matches);
-    let cookie_input_file = matches::cookie_input_file(arg_matches);
-    let cookie_output_file = matches::cookie_output_file(arg_matches);
-    let curl_file = matches::curl_file(arg_matches);
-    let delay = matches::delay(arg_matches)?;
-    let error_format = matches::error_format(arg_matches);
-    let file_root = matches::file_root(arg_matches);
-    let (follow_location, follow_location_trusted) = matches::follow_location(arg_matches);
-    let from_entry = matches::from_entry(arg_matches);
-    let headers = matches::headers(arg_matches);
-    let html_dir = matches::html_dir(arg_matches)?;
-    let http_version = matches::http_version(arg_matches);
-    let ignore_asserts = matches::ignore_asserts(arg_matches);
-    let include = matches::include(arg_matches);
-    let input_files = matches::input_files(arg_matches, context)?;
-    let insecure = matches::insecure(arg_matches);
-    let interactive = matches::interactive(arg_matches);
-    let ip_resolve = matches::ip_resolve(arg_matches);
-    let jobs = matches::jobs(arg_matches);
-    let json_report_dir = matches::json_report_dir(arg_matches)?;
-    let junit_file = matches::junit_file(arg_matches);
-    let limit_rate = matches::limit_rate(arg_matches);
-    let max_filesize = matches::max_filesize(arg_matches);
-    let max_redirect = matches::max_redirect(arg_matches);
-    let negotiate = matches::negotiate(arg_matches);
-    let netrc = matches::netrc(arg_matches);
-    let netrc_file = matches::netrc_file(arg_matches)?;
-    let netrc_optional = matches::netrc_optional(arg_matches);
-    let no_proxy = matches::no_proxy(arg_matches);
-    let ntlm = matches::ntlm(arg_matches);
-    let parallel = matches::parallel(arg_matches);
-    let path_as_is = matches::path_as_is(arg_matches);
-    let pinned_pub_key = matches::pinned_pub_key(arg_matches);
-    let progress_bar = matches::progress_bar(arg_matches, context);
-    let pretty = matches::pretty(arg_matches, context);
-    let proxy = matches::proxy(arg_matches);
-    let output = matches::output(arg_matches);
-    let output_type = matches::output_type(arg_matches);
-    let repeat = matches::repeat(arg_matches);
-    let resolves = matches::resolves(arg_matches);
-    let retry = matches::retry(arg_matches);
-    let retry_interval = matches::retry_interval(arg_matches)?;
-    let secrets = matches::secret(arg_matches, context)?;
-    let ssl_no_revoke = matches::ssl_no_revoke(arg_matches);
-    let tap_file = matches::tap_file(arg_matches);
-    let test = matches::test(arg_matches);
-    let timeout = matches::timeout(arg_matches)?;
-    let to_entry = matches::to_entry(arg_matches);
-    let unix_socket = matches::unix_socket(arg_matches);
-    let user = matches::user(arg_matches);
-    let user_agent = matches::user_agent(arg_matches);
-    let variables = matches::variables(arg_matches, context)?;
-    let verbose = matches::verbose(arg_matches);
-    let very_verbose = matches::very_verbose(arg_matches);
-    Ok(CliOptions {
-        aws_sigv4,
-        cacert_file,
-        client_cert_file,
-        client_key_file,
-        color,
-        compressed,
-        connect_timeout,
-        connects_to,
-        continue_on_error,
-        cookie_input_file,
-        cookie_output_file,
-        curl_file,
-        delay,
-        error_format,
-        file_root,
-        follow_location,
-        follow_location_trusted,
-        from_entry,
-        headers,
-        html_dir,
-        http_version,
-        ignore_asserts,
-        include,
-        input_files,
-        insecure,
-        interactive,
-        ip_resolve,
-        json_report_dir,
-        junit_file,
-        limit_rate,
-        max_filesize,
-        max_redirect,
-        negotiate,
-        netrc,
-        netrc_file,
-        netrc_optional,
-        no_proxy,
-        ntlm,
-        path_as_is,
-        pinned_pub_key,
-        parallel,
-        pretty,
-        progress_bar,
-        proxy,
-        output,
-        output_type,
-        repeat,
-        resolves,
-        retry,
-        retry_interval,
-        secrets,
-        ssl_no_revoke,
-        tap_file,
-        test,
-        timeout,
-        to_entry,
-        unix_socket,
-        user,
-        user_agent,
-        variables,
-        verbose,
-        very_verbose,
-        jobs,
-    })
+    let options = CliOptions::default();
+    let options = context::init_options(context, options);
+    let options = config_file::parse_config_file(context.config_file_path(), options)?;
+    let options = env_vars::parse_env_vars(context, options)?;
+    let options = args::parse_cli_args(context, options)?;
+    Ok(options)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -441,9 +242,84 @@ pub enum OutputType {
     NoOutput,
 }
 
+impl Default for CliOptions {
+    fn default() -> Self {
+        CliOptions {
+            aws_sigv4: None,
+            cacert_file: None,
+            client_cert_file: None,
+            client_key_file: None,
+            color_stdout: false,
+            color_stderr: false,
+            compressed: false,
+            connect_timeout: Duration::from_secs(300),
+            connects_to: Vec::new(),
+            continue_on_error: false,
+            cookie_input_file: None,
+            cookie_output_file: None,
+            curl_file: None,
+            delay: Duration::from_millis(0),
+            digest: false,
+            error_format: ErrorFormat::Short,
+            file_root: None,
+            follow_location: false,
+            follow_location_trusted: false,
+            from_entry: None,
+            headers: Vec::new(),
+            html_dir: None,
+            http_version: None,
+            no_assert: false,
+            include: false,
+            input_files: Vec::new(),
+            insecure: false,
+            ip_resolve: None,
+            jobs: None,
+            json_report_dir: None,
+            junit_file: None,
+            limit_rate: None,
+            max_filesize: None,
+            max_redirect: Count::Finite(50),
+            negotiate: false,
+            netrc: false,
+            netrc_file: None,
+            netrc_optional: false,
+            no_cookie_store: false,
+            no_proxy: None,
+            ntlm: false,
+            output: None,
+            output_type: OutputType::ResponseBody,
+            parallel: false,
+            path_as_is: false,
+            pinned_pub_key: None,
+            pretty: PrettyMode::None,
+            progress_bar: false,
+            proxy: None,
+            repeat: None,
+            resolves: Vec::new(),
+            retry: None,
+            retry_interval: Duration::from_millis(1000),
+            secrets: HashMap::new(),
+            ssl_no_revoke: false,
+            tap_file: None,
+            test: false,
+            timeout: Duration::from_secs(300),
+            to_entry: None,
+            unix_socket: None,
+            user: None,
+            user_agent: None,
+            variables: HashMap::new(),
+            verbosity: None,
+        }
+    }
+}
+
 impl CliOptions {
     /// Converts this instance of [`CliOptions`] to an instance of [`RunnerOptions`]
-    pub fn to_runner_options(&self, filename: &Input, current_dir: &Path) -> RunnerOptions {
+    pub fn to_runner_options(
+        &self,
+        filename: &Input,
+        current_dir: &Path,
+    ) -> Result<RunnerOptions, CliError> {
         let aws_sigv4 = self.aws_sigv4.clone();
         let cacert_file = self.cacert_file.clone();
         let client_cert_file = self.client_cert_file.clone();
@@ -458,19 +334,41 @@ impl CliOptions {
                 InputKind::Stdin(_) => current_dir,
             },
         };
+        let color_stdout = self.color_stdout;
         let context_dir = ContextDir::new(current_dir, file_root);
         let continue_on_error = self.continue_on_error;
         let cookie_input_file = self.cookie_input_file.clone();
         let delay = self.delay;
+        let digest = self.digest;
         let follow_location = self.follow_location;
         let follow_location_trusted = self.follow_location_trusted;
+        let follow_location = match (follow_location, follow_location_trusted) {
+            (true, true) => FollowLocation::Follow(CredentialForwarding::AllHosts),
+            (true, false) => FollowLocation::Follow(CredentialForwarding::OnlyInitialHost),
+            (false, _) => FollowLocation::No,
+        };
         let from_entry = self.from_entry;
-        let headers = &self.headers;
+
+        // TODO: do we want to manage the headers with no content? There are two type of no-content
+        // headers: `foo:` and `foo;`. The first one can be used to remove libcurl headers (`Host:`)
+        // while the second one is used to send an empty header.
+        // See <https://github.com/Orange-OpenSource/hurl/issues/3536>
+        let mut headers = HeaderVec::new();
+        for header in self.headers.iter() {
+            match Header::parse(header) {
+                Some(header) => headers.push(header),
+                None => {
+                    let msg = format!("Invalid header <{header}>, missing `:`");
+                    return Err(CliError::InvalidOption(msg));
+                }
+            }
+        }
+
         let http_version = match self.http_version {
             Some(version) => version.into(),
             None => RequestedHttpVersion::default(),
         };
-        let ignore_asserts = self.ignore_asserts;
+        let no_assert = self.no_assert;
         let insecure = self.insecure;
         let ip_resolve = match self.ip_resolve {
             Some(ip) => ip.into(),
@@ -489,16 +387,7 @@ impl CliOptions {
         let output = self.output.clone();
         let path_as_is = self.path_as_is;
         let pinned_pub_key = self.pinned_pub_key.clone();
-        let post_entry = if self.interactive {
-            Some(cli::interactive::post_entry as fn() -> bool)
-        } else {
-            None
-        };
-        let pre_entry = if self.interactive {
-            Some(cli::interactive::pre_entry as fn(&Entry) -> bool)
-        } else {
-            None
-        };
+        let pretty = self.pretty;
         let proxy = self.proxy.clone();
         let resolves = self.resolves.clone();
         let retry = self.retry;
@@ -509,15 +398,18 @@ impl CliOptions {
         let timeout = self.timeout;
         let to_entry = self.to_entry;
         let unix_socket = self.unix_socket.clone();
+        let use_cookie_store = !self.no_cookie_store;
         let user = self.user.clone();
         let user_agent = self.user_agent.clone();
 
-        RunnerOptionsBuilder::new()
+        Ok(RunnerOptionsBuilder::new()
             .aws_sigv4(aws_sigv4)
             .cacert_file(cacert_file)
             .client_cert_file(client_cert_file)
             .client_key_file(client_key_file)
             .delay(delay)
+            .digest(digest)
+            .color_stdout(color_stdout)
             .compressed(compressed)
             .connect_timeout(connect_timeout)
             .connects_to(&connects_to)
@@ -525,11 +417,10 @@ impl CliOptions {
             .context_dir(&context_dir)
             .cookie_input_file(cookie_input_file)
             .follow_location(follow_location)
-            .follow_location_trusted(follow_location_trusted)
             .from_entry(from_entry)
             .headers(headers)
             .http_version(http_version)
-            .ignore_asserts(ignore_asserts)
+            .no_assert(no_assert)
             .insecure(insecure)
             .ip_resolve(ip_resolve)
             .max_filesize(max_filesize)
@@ -545,8 +436,7 @@ impl CliOptions {
             .output(output)
             .path_as_is(path_as_is)
             .pinned_pub_key(pinned_pub_key)
-            .post_entry(post_entry)
-            .pre_entry(pre_entry)
+            .pretty(pretty)
             .proxy(proxy)
             .resolves(&resolves)
             .retry(retry)
@@ -555,16 +445,21 @@ impl CliOptions {
             .timeout(timeout)
             .to_entry(to_entry)
             .unix_socket(unix_socket)
+            .use_cookie_store(use_cookie_store)
             .user(user)
             .user_agent(user_agent)
-            .build()
+            .build())
     }
 
     /// Converts this instance of [`ClipOptions`] to an instance of [`LoggerOptions`]
     pub fn to_logger_options(&self) -> LoggerOptions {
-        let verbosity = Verbosity::from(self.verbose, self.very_verbose);
+        let verbosity = self.verbosity.map(|v| match v {
+            Verbosity::Brief => logger::Verbosity::LowVerbose,
+            Verbosity::Verbose => logger::Verbosity::Verbose,
+            Verbosity::Debug => logger::Verbosity::VeryVerbose,
+        });
         LoggerOptionsBuilder::new()
-            .color(self.color)
+            .color(self.color_stderr)
             .error_format(self.error_format.into())
             .verbosity(verbosity)
             .build()

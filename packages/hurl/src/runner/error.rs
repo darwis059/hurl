@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,8 @@ pub enum RunnerErrorKind {
     AssertVersion {
         actual: String,
     },
+    /// The user tries to output binaries data to standard output.
+    BinaryOutput,
     ExpressionInvalidType {
         value: String,
         expecting: String,
@@ -92,12 +94,22 @@ pub enum RunnerErrorKind {
     },
     FilterInvalidEncoding(String),
     /// Input of the filter is not valid, with a given reason.
-    FilterInvalidInput(String),
+    FilterInvalidInputValue(String),
+    /// Input of the filter is not the expected type.
+    FilterInvalidInputType {
+        actual: String,
+        expected: String,
+    },
     FilterInvalidFormatSpecifier(String),
     FilterMissingInput,
     Http(HttpError),
     InvalidJson {
         value: String,
+    },
+    InvalidOptionValue {
+        name: String,
+        value: String,
+        message: String,
     },
     InvalidRegex,
     InvalidUrl {
@@ -145,17 +157,20 @@ impl DisplaySourceError for RunnerError {
             RunnerErrorKind::AssertHeaderValueError { .. } => "Assert header value".to_string(),
             RunnerErrorKind::AssertStatus { .. } => "Assert status code".to_string(),
             RunnerErrorKind::AssertVersion { .. } => "Assert HTTP version".to_string(),
+            RunnerErrorKind::BinaryOutput => "Binary output".to_string(),
             RunnerErrorKind::ExpressionInvalidType { .. } => "Invalid expression type".to_string(),
             RunnerErrorKind::FileReadAccess { .. } => "File read access".to_string(),
             RunnerErrorKind::FileWriteAccess { .. } => "File write access".to_string(),
             RunnerErrorKind::FilterDateParsingError { .. } => "Filter error".to_string(),
             RunnerErrorKind::FilterDecode { .. } => "Filter error".to_string(),
             RunnerErrorKind::FilterInvalidEncoding { .. } => "Filter error".to_string(),
-            RunnerErrorKind::FilterInvalidInput { .. } => "Filter error".to_string(),
+            RunnerErrorKind::FilterInvalidInputValue { .. } => "Filter error".to_string(),
+            RunnerErrorKind::FilterInvalidInputType { .. } => "Filter error".to_string(),
             RunnerErrorKind::FilterInvalidFormatSpecifier { .. } => "Filter error".to_string(),
             RunnerErrorKind::FilterMissingInput => "Filter error".to_string(),
             RunnerErrorKind::Http(http_error) => http_error.description(),
             RunnerErrorKind::InvalidJson { .. } => "Invalid JSON".to_string(),
+            RunnerErrorKind::InvalidOptionValue { .. } => "Invalid option value".to_string(),
             RunnerErrorKind::InvalidRegex => "Invalid regex".to_string(),
             RunnerErrorKind::InvalidUrl { .. } => "Invalid URL".to_string(),
             RunnerErrorKind::InvalidXPathEval => "Invalid XPath expression".to_string(),
@@ -217,6 +232,11 @@ impl DisplaySourceError for RunnerError {
                 let message = error::add_carets(message, self.source_info, content);
                 color_red_multiline_string(&message)
             }
+            RunnerErrorKind::BinaryOutput => {
+                let message = "binary output can mess up your terminal. Use \"--output -\" to tell Hurl to output it to your terminal anyway, or consider \"--output\" to save to a file";
+                let message = error::add_carets(message, self.source_info, content);
+                color_red_multiline_string(&message)
+            }
             RunnerErrorKind::AssertVersion { actual, .. } => {
                 let message = &format!("actual value is <{actual}>");
                 let message = error::add_carets(message, self.source_info, content);
@@ -254,8 +274,15 @@ impl DisplaySourceError for RunnerError {
                 let message = error::add_carets(message, self.source_info, content);
                 color_red_multiline_string(&message)
             }
-            RunnerErrorKind::FilterInvalidInput(reason) => {
+            RunnerErrorKind::FilterInvalidInputValue(reason) => {
                 let message = &format!("invalid filter input: {reason}");
+                let message = error::add_carets(message, self.source_info, content);
+                color_red_multiline_string(&message)
+            }
+            RunnerErrorKind::FilterInvalidInputType { actual, expected } => {
+                let message = &format!(
+                    "invalid filter input type\n   actual:   {actual}\n   expected: {expected}"
+                );
                 let message = error::add_carets(message, self.source_info, content);
                 color_red_multiline_string(&message)
             }
@@ -279,6 +306,16 @@ impl DisplaySourceError for RunnerError {
                 let message = error::add_carets(message, self.source_info, content);
                 color_red_multiline_string(&message)
             }
+            RunnerErrorKind::InvalidOptionValue {
+                name,
+                value,
+                message,
+            } => {
+                let message = &format!("invalid {name} option value <{value}>: {message}");
+                let message = error::add_carets(message, self.source_info, content);
+                color_red_multiline_string(&message)
+            }
+
             RunnerErrorKind::InvalidRegex => {
                 let message = "regex expression is not valid";
                 let message = error::add_carets(message, self.source_info, content);
@@ -460,9 +497,7 @@ mod tests {
         let error = RunnerError::new(error_source_info, kind, true);
 
         assert_eq!(
-            error
-                .message(&lines)
-                .to_string(Format::Plain),
+            error.message(&lines).to_string(Format::Plain),
             "\n 1 | GET http://unknown\n   |     ^^^^^^^^^^^^^^ (6) Could not resolve host: unknown\n   |"
         );
         assert_eq!(
@@ -537,9 +572,9 @@ xpath "strong(//head/title)" == "Hello"
         let entry_source_info = SourceInfo::new(Pos::new(1, 1), Pos::new(1, 22));
         let error = RunnerError::new(error_source_info, RunnerErrorKind::InvalidXPathEval, true);
         assert_eq!(
-        &error.message(&lines).to_string(Format::Plain),
-        "\n 4 | xpath \"strong(//head/title)\" == \"Hello\"\n   |       ^^^^^^^^^^^^^^^^^^^^^^ XPath expression is not valid\n   |"
-    );
+            &error.message(&lines).to_string(Format::Plain),
+            "\n 4 | xpath \"strong(//head/title)\" == \"Hello\"\n   |       ^^^^^^^^^^^^^^^^^^^^^^ XPath expression is not valid\n   |"
+        );
         assert_eq!(
             error.render(
                 filename,

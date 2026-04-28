@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
  */
 use crate::ast::visit::Visitor;
 use crate::ast::{
-    visit, Comment, Entry, FilterValue, JsonValue, Method, Placeholder, Regex, Request, Response,
-    Template, Whitespace, U64,
+    Comment, Entry, FilterValue, JsonValue, Method, Placeholder, Regex, Request, Response,
+    Template, U64, Whitespace, visit,
 };
 use crate::ast::{
     CookiePath, HurlFile, MultilineString, Number, PredicateFuncValue, QueryValue, StatusValue,
@@ -374,9 +374,7 @@ mod tests {
             }],
             source_info: SourceInfo::new(Pos::new(0, 0), Pos::new(0, 0)),
         });
-        let attributes = vec![];
         let multiline_string = MultilineString {
-            attributes,
             space: Whitespace {
                 value: String::new(),
                 source_info: SourceInfo {

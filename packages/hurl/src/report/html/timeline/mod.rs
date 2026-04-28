@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
  *
  */
 use crate::http::Call;
+use crate::report::html::Testcase;
 use crate::report::html::nav::Tab;
 use crate::report::html::timeline::unit::Pixel;
-use crate::report::html::Testcase;
 use crate::runner::EntryResult;
 use hurl_core::ast::HurlFile;
 use hurl_core::types::Index;

@@ -22,10 +22,10 @@ csrf_token: xpath "string(//meta[@name='_csrf_token']/@content)"
 
 # Do login!
 POST https://example.org/login
-X-CSRF-TOKEN: {{csrf_token}}
 [Form]
 user: toto
 password: 1234
+token: {{csrf_token}}
 HTTP 302
 ```
 
@@ -194,6 +194,6 @@ HTTP 200
 [GitHub]: https://github.com/Orange-OpenSource/hurl
 [libcurl]: https://curl.se/libcurl/
 [star Hurl on GitHub]: https://github.com/Orange-OpenSource/hurl/stargazers
-[HTML]: /docs/standalone/hurl-7.0.0.html
-[PDF]: /docs/standalone/hurl-7.0.0.pdf
-[Markdown]: /docs/standalone/hurl-7.0.0.md
+[HTML]: /docs/standalone/hurl-8.0.0.html
+[PDF]: /docs/standalone/hurl-8.0.0.pdf
+[Markdown]: /docs/standalone/hurl-8.0.0.md

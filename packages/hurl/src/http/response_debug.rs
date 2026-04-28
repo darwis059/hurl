@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +29,13 @@ impl Response {
         // We try to decode the HTTP body as text if the response has a text kind content type.
         // If it ok, we print each line of the body in debug format. Otherwise, we
         // print the body first 64 bytes.
-        if let Some(content_type) = self.headers.content_type() {
-            if !mimetype::is_kind_of_text(content_type) {
-                debug::log_bytes(&self.body, 64, debug, logger);
-                return;
-            }
+        if let Some(content_type) = self.headers.content_type()
+            && !mimetype::is_kind_of_text(content_type)
+        {
+            debug::log_bytes(&self.body, 64, debug, logger);
+            return;
         }
+
         match self.text() {
             Ok(text) => debug::log_text(&text, debug, logger),
             Err(_) => debug::log_bytes(&self.body, 64, debug, logger),

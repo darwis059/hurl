@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ impl XmlDocument {
         let mut root: Option<Element> = None;
         loop {
             match reader.next() {
+                Ok(XmlEvent::Doctype { .. }) => {}
                 Ok(XmlEvent::StartDocument { .. }) => initialized = true,
                 Ok(XmlEvent::EndDocument) => {
                     if !initialized {
@@ -62,7 +63,7 @@ impl XmlDocument {
                     root = Some(element);
                 }
                 Ok(XmlEvent::EndElement { .. }) => {
-                    return Err(InvalidXml("Invalid end of element".to_string()))
+                    return Err(InvalidXml("Invalid end of element".to_string()));
                 }
                 Ok(XmlEvent::CData(_)) => {}
                 Ok(XmlEvent::Comment(_)) => {}
@@ -88,11 +89,14 @@ impl Element {
 
         loop {
             match reader.next() {
+                Ok(XmlEvent::Doctype { .. }) => {
+                    return Err(InvalidXml("Invalid doc type".to_string()));
+                }
                 Ok(XmlEvent::StartDocument { .. }) => {
-                    return Err(InvalidXml("Invalid start of document".to_string()))
+                    return Err(InvalidXml("Invalid start of document".to_string()));
                 }
                 Ok(XmlEvent::EndDocument) => {
-                    return Err(InvalidXml("Invalid stop of document".to_string()))
+                    return Err(InvalidXml("Invalid stop of document".to_string()));
                 }
                 Ok(XmlEvent::ProcessingInstruction { name, data }) => {
                     let child = XmlNode::ProcessingInstruction(name, data);
@@ -109,7 +113,7 @@ impl Element {
                         Ok(element)
                     } else {
                         Err(InvalidXml(format!("Bag closing element {name}")))
-                    }
+                    };
                 }
                 Ok(XmlEvent::CData(value)) => {
                     let child = XmlNode::CData(value);

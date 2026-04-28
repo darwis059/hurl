@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,10 @@ pub fn eval_date_format(
             }
         }
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.kind().to_string());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "date".to_string(),
+            };
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
@@ -53,15 +56,15 @@ pub fn eval_date_format(
 
 #[cfg(test)]
 mod tests {
-    use chrono::offset::Utc;
     use chrono::TimeZone;
+    use chrono::offset::Utc;
     use hurl_core::ast::{Filter, FilterValue, SourceInfo, Template, TemplateElement, Whitespace};
     use hurl_core::reader::Pos;
     use hurl_core::types::ToSource;
 
     use super::*;
-    use crate::runner::filter::eval::eval_filter;
     use crate::runner::VariableSet;
+    use crate::runner::filter::eval::eval_filter;
 
     /// Helper function to return a new filter given a `fmt`
     fn new_date_format_filter(fmt: &str) -> Filter {
@@ -111,7 +114,10 @@ mod tests {
         );
         assert_eq!(
             ret.unwrap_err().kind,
-            RunnerErrorKind::FilterInvalidInput("string".to_string())
+            RunnerErrorKind::FilterInvalidInputType {
+                actual: "string".to_string(),
+                expected: "date".to_string()
+            }
         );
     }
 

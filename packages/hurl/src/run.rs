@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ use hurl_core::error::{DisplaySourceError, OutputFormat};
 use hurl_core::input::Input;
 use hurl_core::types::Count;
 
-use crate::cli::options::CliOptions;
 use crate::cli::CliError;
-use crate::{cli, HurlRun};
+use crate::cli::options::CliOptions;
+use crate::{HurlRun, cli};
 
 /// Runs Hurl `files` sequentially, given a current directory and command-line options (see
 /// [`crate::cli::options::CliOptions`]). This function returns a list of [`HurlRun`] results or
@@ -62,7 +62,7 @@ pub fn run_seq(
         options.secrets.iter().for_each(|(name, value)| {
             variables.insert_secret(name.clone(), value.clone());
         });
-        let runner_options = options.to_runner_options(&filename, current_dir);
+        let runner_options = options.to_runner_options(&filename, current_dir)?;
         let logger_options = options.to_logger_options();
 
         // Run our Hurl file now, we can only fail if there is a parsing error.
@@ -120,26 +120,26 @@ fn print_output(
     stdout: &mut Stdout,
     append: bool,
 ) -> Result<(), CliError> {
-    let output_last_body = hurl_result.success
-        && !options.interactive
-        && matches!(options.output_type, cli::OutputType::ResponseBody);
+    let output_last_body =
+        hurl_result.success && matches!(options.output_type, cli::OutputType::ResponseBody);
     if output_last_body {
         let result = output::write_last_body(
             hurl_result,
             options.include,
-            options.color,
+            options.color_stdout,
             options.pretty,
             options.output.as_ref(),
             stdout,
             append,
         );
         if let Err(e) = result {
-            return Err(CliError::OutputWrite(e.render(
+            let message = e.render(
                 &filename.to_string(),
                 content,
                 None,
-                OutputFormat::Terminal(options.color),
-            )));
+                OutputFormat::Terminal(options.color_stderr),
+            );
+            return Err(CliError::OutputWrite(message));
         }
     }
     if matches!(options.output_type, cli::OutputType::Json) {
@@ -187,17 +187,23 @@ pub fn run_par(
     let output_type =
         options
             .output_type
-            .to_output_type(options.include, options.color, options.pretty);
+            .to_output_type(options.include, options.color_stdout, options.pretty);
     let max_width = terminal_size::terminal_size().map(|(w, _)| w.0 as usize);
     let jobs = files
         .iter()
         .enumerate()
         .map(|(seq, input)| {
-            let runner_options = options.to_runner_options(input, current_dir);
+            let runner_options = options.to_runner_options(input, current_dir)?;
             let logger_options = options.to_logger_options();
-            Job::new(input, seq, &runner_options, &variables, &logger_options)
+            Ok(Job::new(
+                input,
+                seq,
+                &runner_options,
+                &variables,
+                &logger_options,
+            ))
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<Job>, CliError>>()?;
 
     let mut runner = ParallelRunner::new(
         workers_count,
@@ -205,7 +211,7 @@ pub fn run_par(
         options.repeat.unwrap_or(Count::Finite(1)),
         options.test,
         options.progress_bar,
-        options.color,
+        options.color_stderr,
         max_width,
     );
     let results = runner.run(&jobs)?;

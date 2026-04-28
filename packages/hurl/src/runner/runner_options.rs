@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
  */
 use std::time::Duration;
 
-use hurl_core::ast::Entry;
 use hurl_core::types::{BytesPerSec, Count};
 
-use crate::http::{IpResolve, RequestedHttpVersion};
+use crate::http::{FollowLocation, HeaderVec, IpResolve, RequestedHttpVersion};
+use crate::pretty::PrettyMode;
 use crate::util::path::ContextDir;
 
 use super::output::Output;
@@ -32,6 +32,7 @@ pub struct RunnerOptionsBuilder {
     cacert_file: Option<String>,
     client_cert_file: Option<String>,
     client_key_file: Option<String>,
+    color_stdout: bool,
     compressed: bool,
     connect_timeout: Duration,
     connects_to: Vec<String>,
@@ -39,12 +40,12 @@ pub struct RunnerOptionsBuilder {
     continue_on_error: bool,
     cookie_input_file: Option<String>,
     delay: Duration,
-    follow_location: bool,
-    follow_location_trusted: bool,
+    digest: bool,
+    follow_location: FollowLocation,
     from_entry: Option<usize>,
-    headers: Vec<String>,
+    headers: HeaderVec,
     http_version: RequestedHttpVersion,
-    ignore_asserts: bool,
+    no_assert: bool,
     insecure: bool,
     ip_resolve: IpResolve,
     max_filesize: Option<u64>,
@@ -59,9 +60,8 @@ pub struct RunnerOptionsBuilder {
     ntlm: bool,
     output: Option<Output>,
     path_as_is: bool,
+    pretty_mode: PrettyMode,
     pinned_pub_key: Option<String>,
-    post_entry: Option<fn() -> bool>,
-    pre_entry: Option<fn(&Entry) -> bool>,
     proxy: Option<String>,
     repeat: Option<Count>,
     resolves: Vec<String>,
@@ -72,6 +72,7 @@ pub struct RunnerOptionsBuilder {
     timeout: Duration,
     to_entry: Option<usize>,
     unix_socket: Option<String>,
+    use_cookie_store: bool,
     user: Option<String>,
     user_agent: Option<String>,
 }
@@ -84,6 +85,7 @@ impl Default for RunnerOptionsBuilder {
             cacert_file: None,
             client_cert_file: None,
             client_key_file: None,
+            color_stdout: true,
             compressed: false,
             connect_timeout: Duration::from_secs(300),
             connects_to: vec![],
@@ -91,12 +93,12 @@ impl Default for RunnerOptionsBuilder {
             continue_on_error: false,
             cookie_input_file: None,
             delay: Duration::from_millis(0),
-            follow_location: false,
-            follow_location_trusted: false,
+            digest: false,
+            follow_location: FollowLocation::default(),
             from_entry: None,
-            headers: vec![],
+            headers: HeaderVec::new(),
             http_version: RequestedHttpVersion::default(),
-            ignore_asserts: false,
+            no_assert: false,
             insecure: false,
             ip_resolve: IpResolve::default(),
             max_filesize: None,
@@ -112,8 +114,7 @@ impl Default for RunnerOptionsBuilder {
             output: None,
             path_as_is: false,
             pinned_pub_key: None,
-            post_entry: None,
-            pre_entry: None,
+            pretty_mode: PrettyMode::Automatic,
             proxy: None,
             repeat: None,
             resolves: vec![],
@@ -124,6 +125,7 @@ impl Default for RunnerOptionsBuilder {
             timeout: Duration::from_secs(300),
             to_entry: None,
             unix_socket: None,
+            use_cookie_store: true,
             user: None,
             user_agent: None,
         }
@@ -169,6 +171,13 @@ impl RunnerOptionsBuilder {
     /// Sets private key file name.
     pub fn client_key_file(&mut self, client_key_file: Option<String>) -> &mut Self {
         self.client_key_file = client_key_file;
+        self
+    }
+
+    /// Whether we use color in stdout, or not. This property is used when response is outputted
+    /// to a file or to standard output through `[Options]` section.
+    pub fn color_stdout(&mut self, color_stdout: bool) -> &mut Self {
+        self.color_stdout = color_stdout;
         self
     }
 
@@ -239,16 +248,8 @@ impl RunnerOptionsBuilder {
     /// Sets follow redirect.
     ///
     /// To limit the amount of redirects to follow use [`Self::max_redirect`].
-    pub fn follow_location(&mut self, follow_location: bool) -> &mut Self {
+    pub fn follow_location(&mut self, follow_location: FollowLocation) -> &mut Self {
         self.follow_location = follow_location;
-        self
-    }
-
-    /// Sets follow redirect with trust.
-    ///
-    /// To limit the amount of redirects to follow use [`Self::max_redirect`].
-    pub fn follow_location_trusted(&mut self, follow_location_trusted: bool) -> &mut Self {
-        self.follow_location_trusted = follow_location_trusted;
         self
     }
 
@@ -259,8 +260,8 @@ impl RunnerOptionsBuilder {
     }
 
     /// Sets additional headers (overrides if a header already exists).
-    pub fn headers(&mut self, header: &[String]) -> &mut Self {
-        self.headers = header.to_vec();
+    pub fn headers(&mut self, headers: HeaderVec) -> &mut Self {
+        self.headers = headers;
         self
     }
 
@@ -271,8 +272,8 @@ impl RunnerOptionsBuilder {
     }
 
     /// Ignores all asserts defined in the Hurl file.
-    pub fn ignore_asserts(&mut self, ignore_asserts: bool) -> &mut Self {
-        self.ignore_asserts = ignore_asserts;
+    pub fn no_assert(&mut self, no_assert: bool) -> &mut Self {
+        self.no_assert = no_assert;
         self
     }
 
@@ -317,6 +318,12 @@ impl RunnerOptionsBuilder {
     /// Sets the path-as-is flag.
     pub fn path_as_is(&mut self, path_as_is: bool) -> &mut Self {
         self.path_as_is = path_as_is;
+        self
+    }
+
+    /// Enables HTTP Digest authentication.
+    pub fn digest(&mut self, digest: bool) -> &mut Self {
+        self.digest = digest;
         self
     }
 
@@ -368,19 +375,9 @@ impl RunnerOptionsBuilder {
         self
     }
 
-    /// Sets function to be executed after each entry execution.
-    ///
-    /// If the function returns true, the run is stopped.
-    pub fn post_entry(&mut self, post_entry: Option<fn() -> bool>) -> &mut Self {
-        self.post_entry = post_entry;
-        self
-    }
-
-    /// Sets function to be executed before each entry execution.
-    ///
-    /// If the function returns true, the run is stopped.
-    pub fn pre_entry(&mut self, pre_entry: Option<fn(&Entry) -> bool>) -> &mut Self {
-        self.pre_entry = pre_entry;
+    /// Set the pretty mode to prettify response output for supported content type (JSON only for the moment)?
+    pub fn pretty(&mut self, pretty_mode: PrettyMode) -> &mut Self {
+        self.pretty_mode = pretty_mode;
         self
     }
 
@@ -450,6 +447,10 @@ impl RunnerOptionsBuilder {
         self
     }
 
+    pub fn use_cookie_store(&mut self, use_cookie_store: bool) -> &mut Self {
+        self.use_cookie_store = use_cookie_store;
+        self
+    }
     /// Adds basic Authentication header to each request.
     pub fn user(&mut self, user: Option<String>) -> &mut Self {
         self.user = user;
@@ -470,6 +471,7 @@ impl RunnerOptionsBuilder {
             cacert_file: self.cacert_file.clone(),
             client_cert_file: self.client_cert_file.clone(),
             client_key_file: self.client_key_file.clone(),
+            color_stdout: self.color_stdout,
             compressed: self.compressed,
             connect_timeout: self.connect_timeout,
             connects_to: self.connects_to.clone(),
@@ -477,12 +479,12 @@ impl RunnerOptionsBuilder {
             context_dir: self.context_dir.clone(),
             continue_on_error: self.continue_on_error,
             cookie_input_file: self.cookie_input_file.clone(),
+            digest: self.digest,
             follow_location: self.follow_location,
-            follow_location_trusted: self.follow_location_trusted,
             from_entry: self.from_entry,
             headers: self.headers.clone(),
             http_version: self.http_version,
-            ignore_asserts: self.ignore_asserts,
+            no_assert: self.no_assert,
             insecure: self.insecure,
             ip_resolve: self.ip_resolve,
             max_filesize: self.max_filesize,
@@ -498,8 +500,7 @@ impl RunnerOptionsBuilder {
             output: self.output.clone(),
             path_as_is: self.path_as_is,
             pinned_pub_key: self.pinned_pub_key.clone(),
-            post_entry: self.post_entry,
-            pre_entry: self.pre_entry,
+            pretty: self.pretty_mode,
             proxy: self.proxy.clone(),
             repeat: self.repeat,
             resolves: self.resolves.clone(),
@@ -510,6 +511,7 @@ impl RunnerOptionsBuilder {
             timeout: self.timeout,
             to_entry: self.to_entry,
             unix_socket: self.unix_socket.clone(),
+            use_cookie_store: self.use_cookie_store,
             user: self.user.clone(),
             user_agent: self.user_agent.clone(),
         }
@@ -520,7 +522,7 @@ impl RunnerOptionsBuilder {
 ///
 /// Most options are used to configure the HTTP client used for running requests, while other
 /// are used to configure asserts settings, output etc....
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RunnerOptions {
     /// Allow reusing internal connections.
     pub(crate) allow_reuse: bool,
@@ -532,6 +534,9 @@ pub struct RunnerOptions {
     pub(crate) client_cert_file: Option<String>,
     /// Sets private key file name.
     pub(crate) client_key_file: Option<String>,
+    /// Whether we use color in stdout, or not. This property is used when response is outputted
+    /// to a file or to standard output through `[Options]` section.
+    pub(crate) color_stdout: bool,
     /// Requests a compressed response using one of the algorithms br, gzip, deflate and
     /// automatically decompress the content.
     pub(crate) compressed: bool,
@@ -547,18 +552,18 @@ pub struct RunnerOptions {
     pub(crate) continue_on_error: bool,
     /// Reads cookies from this file (using the Netscape cookie file format).
     pub(crate) cookie_input_file: Option<String>,
+    /// Enables HTTP Digest authentication.
+    pub(crate) digest: bool,
     /// Sets follow redirect.
-    pub(crate) follow_location: bool,
-    /// Sets follow redirect with trust.
-    pub(crate) follow_location_trusted: bool,
+    pub(crate) follow_location: FollowLocation,
     /// Executes Hurl file from from_entry (starting at 1), ignores the beginning of the file.
     pub(crate) from_entry: Option<usize>,
     /// Sets additional headers (overrides if a header already exists).
-    pub(crate) headers: Vec<String>,
+    pub(crate) headers: HeaderVec,
     /// Set requested HTTP version (can be different of the effective HTTP version).
     pub(crate) http_version: RequestedHttpVersion,
     /// Ignores all asserts defined in the Hurl file.
-    pub(crate) ignore_asserts: bool,
+    pub(crate) no_assert: bool,
     /// Set IP version.
     pub(crate) ip_resolve: IpResolve,
     /// Allows Hurl to perform “insecure” SSL connections and transfers.
@@ -588,10 +593,8 @@ pub struct RunnerOptions {
     pub(crate) path_as_is: bool,
     /// Sets the pinned public key.
     pub(crate) pinned_pub_key: Option<String>,
-    /// Sets function to be executed before each entry execution.
-    pub(crate) post_entry: Option<fn() -> bool>,
-    /// Sets function to be executed after each entry execution.
-    pub(crate) pre_entry: Option<fn(&Entry) -> bool>,
+    /// Prettify response output for supported content type (JSON only for the moment).
+    pub(crate) pretty: PrettyMode,
     /// Sets the specified proxy to be used.
     pub(crate) proxy: Option<String>,
     /// Set the number of repetition for a given entry.
@@ -612,6 +615,8 @@ pub struct RunnerOptions {
     pub(crate) to_entry: Option<usize>,
     /// Sets the specified unix domain socket to connect through, instead of using the network.
     pub(crate) unix_socket: Option<String>,
+    /// Activates the cookie support for a single file.
+    pub(crate) use_cookie_store: bool,
     /// Adds basic Authentication header to each request.
     pub(crate) user: Option<String>,
     /// Specifies the User-Agent string to send to the HTTP server.
@@ -621,113 +626,6 @@ pub struct RunnerOptions {
 impl Default for RunnerOptions {
     fn default() -> Self {
         RunnerOptionsBuilder::default().build()
-    }
-}
-
-// FIXME: Remove this manual implementation in favour of a derive
-// when we have removed the `post_entry` and `pre_entry` fields,
-// which for the time being had to be left out of a derived comparison
-// due to the `function pointer comparisons do not produce meaningful results` error.
-// See https://github.com/Orange-OpenSource/hurl/issues/3763 and https://github.com/Orange-OpenSource/hurl/pull/4232.
-impl PartialEq for RunnerOptions {
-    fn eq(&self, other: &Self) -> bool {
-        let Self {
-            allow_reuse,
-            aws_sigv4,
-            cacert_file,
-            client_cert_file,
-            client_key_file,
-            compressed,
-            connect_timeout,
-            connects_to,
-            delay,
-            context_dir,
-            continue_on_error,
-            cookie_input_file,
-            follow_location,
-            follow_location_trusted,
-            from_entry,
-            headers,
-            http_version,
-            ignore_asserts,
-            ip_resolve,
-            insecure,
-            max_filesize,
-            max_recv_speed,
-            max_redirect,
-            max_send_speed,
-            negotiate,
-            netrc,
-            netrc_file,
-            netrc_optional,
-            no_proxy,
-            ntlm,
-            output,
-            path_as_is,
-            pinned_pub_key,
-            proxy,
-            repeat,
-            resolves,
-            retry,
-            retry_interval,
-            skip,
-            ssl_no_revoke,
-            timeout,
-            to_entry,
-            unix_socket,
-            user,
-            user_agent,
-            // These fields are excluded from comparison due to the
-            // `function pointer comparisons do not produce meaningful results` error.
-            pre_entry: _,
-            post_entry: _,
-        } = self;
-
-        allow_reuse == &other.allow_reuse
-            && aws_sigv4 == &other.aws_sigv4
-            && cacert_file == &other.cacert_file
-            && client_cert_file == &other.client_cert_file
-            && client_key_file == &other.client_key_file
-            && compressed == &other.compressed
-            && connect_timeout == &other.connect_timeout
-            && connects_to == &other.connects_to
-            && delay == &other.delay
-            && context_dir == &other.context_dir
-            && continue_on_error == &other.continue_on_error
-            && cookie_input_file == &other.cookie_input_file
-            && follow_location == &other.follow_location
-            && follow_location_trusted == &other.follow_location_trusted
-            && from_entry == &other.from_entry
-            && headers == &other.headers
-            && http_version == &other.http_version
-            && ignore_asserts == &other.ignore_asserts
-            && ip_resolve == &other.ip_resolve
-            && insecure == &other.insecure
-            && max_filesize == &other.max_filesize
-            && max_recv_speed == &other.max_recv_speed
-            && max_redirect == &other.max_redirect
-            && max_send_speed == &other.max_send_speed
-            && negotiate == &other.negotiate
-            && netrc == &other.netrc
-            && netrc_file == &other.netrc_file
-            && netrc_optional == &other.netrc_optional
-            && no_proxy == &other.no_proxy
-            && ntlm == &other.ntlm
-            && output == &other.output
-            && path_as_is == &other.path_as_is
-            && pinned_pub_key == &other.pinned_pub_key
-            && proxy == &other.proxy
-            && repeat == &other.repeat
-            && resolves == &other.resolves
-            && retry == &other.retry
-            && retry_interval == &other.retry_interval
-            && skip == &other.skip
-            && ssl_no_revoke == &other.ssl_no_revoke
-            && timeout == &other.timeout
-            && to_entry == &other.to_entry
-            && unix_socket == &other.unix_socket
-            && user == &other.user
-            && user_agent == &other.user_agent
     }
 }
 

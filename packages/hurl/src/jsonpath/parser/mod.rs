@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,25 @@
  * limitations under the License.
  *
  */
-pub use self::parse::parse;
 
+mod comparison;
 mod error;
-mod parse;
+mod expr;
+mod function;
+mod literal;
 mod primitives;
+mod query;
+mod segments;
+mod selectors;
+mod singular_query;
+
+use crate::jsonpath::ast::JsonPathQuery;
+pub use error::{ParseError, ParseErrorKind};
+use hurl_core::reader::Reader;
+
+pub type ParseResult<T> = Result<T, ParseError>;
+
+pub fn parse(s: &str) -> ParseResult<JsonPathQuery> {
+    let mut reader = Reader::new(s);
+    query::parse(&mut reader)
+}

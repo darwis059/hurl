@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,14 +35,19 @@ pub fn eval_xpath(
             let Ok(doc) = Document::parse(xml, Format::Html) else {
                 return Err(RunnerError::new(
                     source_info,
-                    RunnerErrorKind::FilterInvalidInput("value is not a valid XML".to_string()),
+                    RunnerErrorKind::FilterInvalidInputValue(
+                        "value is not a valid XML".to_string(),
+                    ),
                     false,
                 ));
             };
             eval_xpath_doc(&doc, expr, variables)
         }
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.kind().to_string());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "string".to_string(),
+            };
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
@@ -75,8 +80,8 @@ mod tests {
     use hurl_core::types::ToSource;
 
     use super::*;
-    use crate::runner::filter::eval::eval_filter;
     use crate::runner::VariableSet;
+    use crate::runner::filter::eval::eval_filter;
 
     /// Helper function to return a new filter given a `expr`
     fn new_xpath_filter(expr: &str) -> Filter {
@@ -132,7 +137,7 @@ mod tests {
 
         assert_eq!(
             ret.unwrap_err().kind,
-            RunnerErrorKind::FilterInvalidInput("value is not a valid XML".to_string())
+            RunnerErrorKind::FilterInvalidInputValue("value is not a valid XML".to_string())
         );
     }
 
@@ -150,7 +155,10 @@ mod tests {
 
         assert_eq!(
             ret.unwrap_err().kind,
-            RunnerErrorKind::FilterInvalidInput("bytes".to_string())
+            RunnerErrorKind::FilterInvalidInputType {
+                actual: "bytes".to_string(),
+                expected: "string".to_string()
+            }
         );
     }
 }

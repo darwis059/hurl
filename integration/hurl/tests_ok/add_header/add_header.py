@@ -6,6 +6,9 @@ from flask import request
 def add_header():
     assert request.headers.get("header-b") == "baz"
     assert request.headers.get("header-c") == "qux"
+    assert request.headers.get("header-d") == "quux"
+    assert request.headers.get("header-e") == "corge"
+    assert request.headers.get("header-f") == "grault"
     return ""
 
 
@@ -14,6 +17,9 @@ def add_header_with_aggregation():
     assert request.headers.get("header-a") == "foo"
     assert request.headers.get("header-b") == "baz"
     assert request.headers.get("header-c") == "qux"
+    assert request.headers.get("header-d") == "quux"
+    assert request.headers.get("header-e") == "corge"
+    assert request.headers.get("header-f") == "grault"
     return ""
 
 
@@ -24,5 +30,8 @@ def add_header_with_duplicate():
         "baz",
     ]
     assert request.headers.get("header-c") == "qux"
+    assert request.headers.get("header-d") == "quux"
+    assert request.headers.get("header-e") == "corge"
+    assert request.headers.get("header-f") == "grault"
     assert request.get_json()["message"] == "hi!"
     return ""

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
  *
  */
 use hurl_core::ast::{MultilineString, MultilineStringKind};
+use hurl_core::types::ToSource;
 use serde_json::json;
 
 use super::error::RunnerError;
@@ -33,6 +34,10 @@ pub fn eval_multiline(
         | MultilineStringKind::Json(value)
         | MultilineStringKind::Xml(value) => {
             let s = eval_template(value, variables)?;
+            Ok(s)
+        }
+        MultilineStringKind::Raw(value) => {
+            let s = value.to_source().to_string();
             Ok(s)
         }
         MultilineStringKind::GraphQl(graphql) => {
@@ -59,8 +64,8 @@ mod tests {
     use hurl_core::reader::Pos;
     use hurl_core::types::ToSource;
 
-    use crate::runner::multiline::eval_multiline;
     use crate::runner::VariableSet;
+    use crate::runner::multiline::eval_multiline;
 
     fn whitespace() -> Whitespace {
         Whitespace {
@@ -90,7 +95,6 @@ mod tests {
 }"#;
         let variables = VariableSet::new();
         let multiline = MultilineString {
-            attributes: vec![],
             space: whitespace(),
             newline: newline(),
             kind: MultilineStringKind::GraphQl(GraphQl {
@@ -169,7 +173,6 @@ mod tests {
             whitespace: whitespace(),
         };
         let multiline = MultilineString {
-            attributes: vec![],
             space: whitespace(),
             newline: newline(),
             kind: MultilineStringKind::GraphQl(GraphQl {

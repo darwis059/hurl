@@ -5,7 +5,6 @@ set -Eeuo pipefail
 function init_terminal_colors(){
     color_red=$(echo -ne "\033[1;31m")
     color_green=$(echo -ne "\033[1;32m")
-    color_yellow=$(echo -ne "\033[1;33m")
     color_reset=$(echo -ne "\033[0m")
 }
 
@@ -20,7 +19,7 @@ function usage(){
     echo
     echo "  --github-token <github token access> #mandatory"
     echo "      specify github user token"
-    echo "        : example: --github-token ghp_kJvDuaalZidk3nB1uYtgsqMrkQ5Hkh76jh2o"
+    echo "        : example: --github-token ghp_xxxxxxxxxxxxxxxxxxxxxxxxx"
 }
 
 function consume_args(){
@@ -73,55 +72,33 @@ function consume_args(){
 }
 
 function set_zizmor_conf(){
-    cat <<- "EOF" > "$1"
+    conf="/tmp/conf"
+    cat <<- "EOF" > "${conf}"
   rules:
-    excessive-permissions:
-      ignore:
-        - accept-pull-request.yml
-        - auto-close-inactive-pr.yml
-        - coverage.yml
-        - extra-package.yml
-        - release.yml
-        - update-actions.yml
-        - update-branch-version.yml
-        - update-crates.yml
-    unpinned-uses:
-      config:
-        policies:
-          "*": ref-pin
+    unpinned-images:
+      disable: true
+    secrets-outside-env:
+      disable: true
 EOF
+}
+
+function exec_zizmor(){
+    for file in "${files[@]}" ; do
+        tmpfile="/tmp/$(basename "${file}")"
+        < "${file}" sed 's/[^\x00-\x7F]//g' > "${tmpfile}"
+    done
+    conf="/tmp/conf"
+    zizmor --no-progress --config "${conf}" --gh-token "${github_token}" "${files[@]}" && error_count=0 || error_count=$?
+    if [[ $error_count -gt 0 ]] ; then
+        echo "${color_red}There are problems with github workflows${color_reset}"
+        exit 1
+    else
+        echo "${color_green}No problem with github workflows${color_reset}"
+    fi
 }
 
 # main
 init_terminal_colors
 consume_args "$@"
-zizmor --version
-conf="/tmp/conf"
-set_zizmor_conf "${conf}"
-error_count=0
-
-for file in "${files[@]}" ; do
-    # disable release.yml for now because output vars have to be rewrited from scratch"
-    if [[ "${file}" =~ release.yml ]] ; then
-        echo "${color_yellow}$file is disabled for now because output vars have to be rewrited from scratch${color_reset}"
-        continue
-    fi
-    # disable accept-pull-request.yml for now because input vars have to be rewrited from scratch"
-    if [[ "${file}" =~ accept-pull-request.yml ]] ; then
-        echo "${color_yellow}$file is disabled for now because input vars have to be rewrited from scratch${color_reset}"
-        continue
-    fi
-    tmpfile="/tmp/$(basename "${file}")"
-    (sed "s/❌//g" "${file}" 2>/dev/null || true) | \
-        (sed "s/✅//g" "${file}" 2>/dev/null || true) | \
-            (sed "s/🔨//g" "${file}" 2>/dev/null || true) | \
-                (sed "s/🕗//g" "${file}" 2>/dev/null || true) > "${tmpfile}"
-    echo "> ${file} (tmp file: ${tmpfile}):"
-    zizmor --no-progress --config "${conf}" --gh-token "${github_token}" "${tmpfile}" || error_count=$((error_count+1))
-done
-if [[ $error_count -gt 0 ]] ; then
-    echo "${color_red}There are problems with github workflows${color_reset}"
-    exit 1
-else
-    echo "${color_green}No problem with github workflows${color_reset}"
-fi
+set_zizmor_conf
+exec_zizmor

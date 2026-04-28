@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 use super::placeholder;
 use crate::ast::{SourceInfo, Template, TemplateElement};
 use crate::parser::primitives::try_literal;
-use crate::parser::{string, ParseError, ParseErrorKind, ParseResult};
+use crate::parser::{ParseError, ParseErrorKind, ParseResult, string};
 use crate::reader::Reader;
 use crate::types::ToSource;
 
@@ -58,13 +58,13 @@ pub fn parse(reader: &mut Reader) -> ParseResult<Template> {
         let kind = ParseErrorKind::Filename;
         return Err(ParseError::new(start.pos, false, kind));
     }
-    if let Some(TemplateElement::String { source, .. }) = elements.first() {
-        if source.starts_with('[') {
-            let kind = ParseErrorKind::Expecting {
-                value: "filename".to_string(),
-            };
-            return Err(ParseError::new(start.pos, false, kind));
-        }
+    if let Some(TemplateElement::String { source, .. }) = elements.first()
+        && source.starts_with('[')
+    {
+        let kind = ParseErrorKind::Expecting {
+            value: "filename".to_string(),
+        };
+        return Err(ParseError::new(start.pos, false, kind));
     }
 
     let end = reader.cursor();

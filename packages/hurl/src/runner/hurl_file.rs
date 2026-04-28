@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,16 @@ use hurl_core::input::Input;
 use hurl_core::parser;
 use hurl_core::types::{Count, Index};
 
-use crate::http::{Call, Client};
+use crate::http::{Call, Client, CredentialForwarding, FollowLocation};
 use crate::util::logger::{ErrorFormat, Logger, LoggerOptions};
 use crate::util::term::{Stderr, Stdout, WriteMode};
 
-use super::entry;
 use super::event::EventListener;
 use super::options;
 use super::result::{EntryResult, HurlResult};
 use super::runner_options::RunnerOptions;
 use super::variable::VariableSet;
+use super::{Output, entry};
 
 /// Runs a Hurl `content` and returns a [`HurlResult`] upon completion.
 ///
@@ -51,6 +51,7 @@ use super::variable::VariableSet;
 ///
 /// ```
 /// use std::collections::HashMap;
+/// use hurl::http::{CredentialForwarding, FollowLocation};
 /// use hurl::runner;
 /// use hurl::runner::{Value, RunnerOptionsBuilder, VariableSet};
 /// use hurl::util::logger::{LoggerOptionsBuilder, Verbosity};
@@ -66,7 +67,7 @@ use super::variable::VariableSet;
 ///
 /// // Define runner and logger options
 /// let runner_opts = RunnerOptionsBuilder::new()
-///     .follow_location(true)
+///     .follow_location(FollowLocation::Follow(CredentialForwarding::AllHosts))
 ///     .build();
 /// let logger_opts = LoggerOptionsBuilder::new()
 ///     .verbosity(Some(Verbosity::Verbose))
@@ -176,22 +177,6 @@ pub fn run_entries(
     let start = Instant::now();
     let timestamp = Utc::now().timestamp();
 
-    // Warn deprecations
-    if runner_options.pre_entry.is_some() {
-        logger.warning(
-            "--interactive mode is now deprecated, it will be removed in next Hurl versions",
-        );
-    }
-
-    if entries
-        .iter()
-        .any(|e| e.use_multiline_string_body_with_attributes())
-    {
-        logger.warning(
-            "multilines string attributes are now deprecated, they will be removed in next Hurl versions",
-        );
-    }
-
     log_run_info(entries, runner_options, &variables, logger);
 
     // Main loop processing each entry.
@@ -204,13 +189,6 @@ pub fn run_entries(
             break;
         }
         let entry = &entries[current.to_zero_based()];
-
-        if let Some(pre_entry) = runner_options.pre_entry {
-            let exit = pre_entry(entry);
-            if exit {
-                break;
-            }
-        }
 
         // We compute the new logger verbosity for this entry, before entering into the `run`
         // function because entry options can modify the logger verbosity and we want the preamble
@@ -299,12 +277,6 @@ pub fn run_entries(
 
         entries_result.extend(results);
 
-        if let Some(post_entry) = runner_options.post_entry {
-            let exit = post_entry();
-            if exit {
-                break;
-            }
-        }
         if !runner_options.continue_on_error && has_error {
             break;
         }
@@ -333,20 +305,21 @@ pub fn run_entries(
 
     let duration = start.elapsed();
     let cookie_store = http_client.cookie_store(logger);
-    let cookies = cookie_store.into_vec();
     let success = is_success(&entries_result);
     HurlResult {
         entries: entries_result,
         duration,
         success,
-        cookies,
+        cookie_store,
         timestamp,
         variables,
     }
 }
 
-/// Runs an HTTP request and optional retry it until there are no HTTP errors. Returns a list of
-/// [`EntryResult`].
+/// Runs an HTTP request and optionally retry it until there are no HTTP errors or the maximum retry
+/// count is reached. Returns a list of [`EntryResult`]. This list contains the results for each retry;
+/// so if there are no retry, this list contains a single entry.
+///
 /// `current` is the current index of the entry run, `last` is the index of the last entry to be run
 #[allow(clippy::too_many_arguments)]
 fn run_request(
@@ -369,7 +342,7 @@ fn run_request(
         let mut result = entry::run(entry, current, http_client, variables, options, logger);
 
         // Check if we need to retry.
-        let mut has_error = !result.errors.is_empty();
+        let has_error = !result.errors.is_empty();
 
         // The retry threshold can only be reached with a finite positive number of retries
         let retry_max_reached = if let Some(Count::Finite(r)) = options.retry {
@@ -392,21 +365,21 @@ fn run_request(
 
         // When --output is overridden on a request level, we output the HTTP response only if the
         // call has succeeded. Output errors are not taken into account for retrying requests.
-        if let Some(output) = &options.output {
-            if !has_error {
-                let source_info = get_output_source_info(entry);
-                if let Err(error) =
-                    result.write_response(output, &options.context_dir, stdout, source_info)
-                {
-                    result.errors.push(error);
-                    has_error = true;
-                }
-            }
-        }
-
-        if has_error {
+        if !has_error && let Some(output) = &options.output {
+            write_entry_response(
+                entry,
+                &mut result,
+                content,
+                filename,
+                output,
+                options,
+                stdout,
+                logger,
+            );
+        } else if has_error {
             log_errors(&result, content, filename, retry, logger);
         }
+
         results.push(result);
 
         // No retry, we leave the HTTP run requests loop.
@@ -439,6 +412,70 @@ fn run_request(
     }
 
     results
+}
+
+/// Writes this `entry_result` HTTP body response to the file `output`. This function
+/// can possibly mut this `entry_result` errors with I/O or unauthorized access errors.
+///
+/// A context directory (through `option`) is provided to check if write access is authorized.
+/// If there is a write error (either I/O, or unauthorized access), `content` and `input` are used
+/// to print a rich error (assert like) and `entry_result` errors are appended.
+#[allow(clippy::too_many_arguments)]
+fn write_entry_response(
+    entry: &Entry,
+    entry_result: &mut EntryResult,
+    content: &str,
+    input: Option<&Input>,
+    output: &Output,
+    options: &RunnerOptions,
+    stdout: &mut Stdout,
+    logger: &mut Logger,
+) {
+    let context_dir = &options.context_dir;
+    let source_info = get_output_source_info(entry);
+
+    // Check if write access is allowed for this context dir.
+    let output = match output.clone().try_with(context_dir, source_info) {
+        Ok(o) => o,
+        Err(error) => {
+            let filename = input.map_or(String::new(), |f| f.to_string());
+            let message = error.render(
+                &filename,
+                content,
+                Some(entry_result.source_info),
+                OutputFormat::Terminal(logger.color),
+            );
+            logger.error_rich(&message);
+            entry_result.errors.push(error);
+            return;
+        }
+    };
+
+    // Hard-codes `include` for the moment
+    let include_headers = false;
+    let color = options.color_stdout;
+    let pretty = options.pretty;
+    // When we override output in a entry, we truncate existing files.
+    let append = false;
+    if let Err(error) = entry_result.write_response(
+        Some(&output),
+        stdout,
+        include_headers,
+        color,
+        pretty,
+        append,
+        source_info,
+    ) {
+        let filename = input.map_or(String::new(), |f| f.to_string());
+        let message = error.render(
+            &filename,
+            content,
+            Some(entry_result.source_info),
+            OutputFormat::Terminal(logger.color),
+        );
+        logger.error_rich(&message);
+        entry_result.errors.push(error);
+    }
 }
 
 /// Use source_info from output option if this option has been defined
@@ -499,7 +536,15 @@ fn get_non_default_options(options: &RunnerOptions) -> Vec<(&'static str, String
     }
 
     if options.follow_location != default_options.follow_location {
-        non_default_options.push(("follow redirect", options.follow_location.to_string()));
+        match options.follow_location {
+            FollowLocation::No => {}
+            FollowLocation::Follow(CredentialForwarding::OnlyInitialHost) => {
+                non_default_options.push(("follow redirect", "true".to_string()));
+            }
+            FollowLocation::Follow(CredentialForwarding::AllHosts) => {
+                non_default_options.push(("follow redirect", "true (trusted)".to_string()));
+            }
+        }
     }
 
     if options.insecure != default_options.insecure {
@@ -510,10 +555,10 @@ fn get_non_default_options(options: &RunnerOptions) -> Vec<(&'static str, String
         non_default_options.push(("max redirect", options.max_redirect.to_string()));
     }
 
-    if options.proxy != default_options.proxy {
-        if let Some(proxy) = &options.proxy {
-            non_default_options.push(("proxy", proxy.to_string()));
-        }
+    if options.proxy != default_options.proxy
+        && let Some(proxy) = &options.proxy
+    {
+        non_default_options.push(("proxy", proxy.to_string()));
     }
 
     if options.retry != default_options.retry {
@@ -524,10 +569,10 @@ fn get_non_default_options(options: &RunnerOptions) -> Vec<(&'static str, String
         non_default_options.push(("retry", value));
     }
 
-    if options.unix_socket != default_options.unix_socket {
-        if let Some(unix_socket) = &options.unix_socket {
-            non_default_options.push(("unix socket", unix_socket.to_string()));
-        }
+    if options.unix_socket != default_options.unix_socket
+        && let Some(unix_socket) = &options.unix_socket
+    {
+        non_default_options.push(("unix socket", unix_socket.to_string()));
     }
 
     non_default_options
@@ -581,14 +626,15 @@ fn log_errors(
         return;
     }
 
-    if logger.error_format == ErrorFormat::Long {
-        if let Some(Call { response, .. }) = entry_result.calls.last() {
-            logger.info_curl_cmd(&entry_result.curl_cmd.to_string());
-            logger.info("");
+    if logger.error_format == ErrorFormat::Long
+        && let Some(Call { response, .. }) = entry_result.calls.last()
+    {
+        logger.info_curl_cmd(&entry_result.curl_cmd.to_string());
+        logger.info("");
 
-            response.log_info_all(logger);
-        }
+        response.log_info_all(logger);
     }
+
     entry_result.errors.iter().for_each(|error| {
         let filename = filename.map_or(String::new(), |f| f.to_string());
         let message = error.render(

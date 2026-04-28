@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,12 +134,11 @@ impl ResponseCookie {
     /// Converts a cookie attribute value named `name` into an integer.
     fn attr_as_i64(&self, name: &str) -> Option<i64> {
         for attr in &self.attributes {
-            if attr.name.to_lowercase() == name.to_lowercase() {
-                if let Some(v) = &attr.value {
-                    if let Ok(v2) = v.as_str().parse::<i64>() {
-                        return Some(v2);
-                    }
-                }
+            if attr.name.to_lowercase() == name.to_lowercase()
+                && let Some(v) = &attr.value
+                && let Ok(v2) = v.as_str().parse::<i64>()
+            {
+                return Some(v2);
             }
         }
         None

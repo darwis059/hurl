@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  */
-use clap::{value_parser, ArgAction};
+use clap::{ArgAction, value_parser};
 
 pub fn compressed() -> clap::Arg {
     clap::Arg::new("compressed").long("compressed").num_args(0)
@@ -58,7 +58,20 @@ pub fn data() -> clap::Arg {
         .long("data")
         .short('d')
         .value_name("data")
+        .overrides_with("data_raw")
         .num_args(1)
+}
+
+pub fn data_raw() -> clap::Arg {
+    clap::Arg::new("data_raw")
+        .long("data-raw")
+        .value_name("data")
+        .overrides_with("data")
+        .num_args(1)
+}
+
+pub fn digest() -> clap::Arg {
+    clap::Arg::new("digest").long("digest").num_args(0)
 }
 
 pub fn headers() -> clap::Arg {

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,12 +31,15 @@ pub fn eval_to_int(
         Value::String(v) => match v.parse::<i64>() {
             Ok(i) => Ok(Some(Value::Number(Number::Integer(i)))),
             _ => {
-                let kind = RunnerErrorKind::FilterInvalidInput(value.repr());
+                let kind = RunnerErrorKind::FilterInvalidInputValue(value.repr());
                 Err(RunnerError::new(source_info, kind, assert))
             }
         },
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.repr());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "float, integer or string".to_string(),
+            };
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
@@ -109,14 +112,17 @@ mod tests {
         .unwrap();
         assert_eq!(
             err.kind,
-            RunnerErrorKind::FilterInvalidInput("string <123x>".to_string())
+            RunnerErrorKind::FilterInvalidInputValue("string <123x>".to_string())
         );
         let err = eval_filter(&filter, &Value::Bool(true), &variables, false)
             .err()
             .unwrap();
         assert_eq!(
             err.kind,
-            RunnerErrorKind::FilterInvalidInput("boolean <true>".to_string())
+            RunnerErrorKind::FilterInvalidInputType {
+                actual: "boolean".to_string(),
+                expected: "float, integer or string".to_string()
+            }
         );
     }
 }

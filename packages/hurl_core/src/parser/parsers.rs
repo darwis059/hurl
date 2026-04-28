@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -385,7 +385,6 @@ mod tests {
                     source_info: SourceInfo::new(Pos::new(2, 1), Pos::new(2, 1)),
                 },
                 value: Bytes::MultilineString(MultilineString {
-                    attributes: vec![],
                     space: Whitespace {
                         value: String::new(),
                         source_info: SourceInfo::new(Pos::new(2, 4), Pos::new(2, 4)),

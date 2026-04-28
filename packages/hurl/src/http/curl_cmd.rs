@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,10 @@ use crate::runner::Output;
 use crate::util::path::ContextDir;
 
 use super::cookie_store::CookieStore;
-use super::header::{Header, HeaderVec, CONTENT_TYPE};
+use super::header::{CONTENT_TYPE, Header, HeaderVec};
 use super::options::ClientOptions;
 use super::param::Param;
-use super::request::{IpResolve, RequestedHttpVersion};
+use super::request::{CredentialForwarding, FollowLocation, IpResolve, RequestedHttpVersion};
 use super::request_spec::{Body, FileParam, Method, MultipartParam, RequestSpec};
 
 /// Represents a curl command, with arguments.
@@ -67,14 +67,10 @@ impl CurlCmd {
         let mut params = method_params(request_spec, options.follow_location);
         args.append(&mut params);
 
-        let options_headers = options
-            .headers
-            .iter()
-            .map(|h| h.as_str())
-            .collect::<Vec<&str>>();
-        let headers = &request_spec.headers.with_raw_headers(&options_headers);
+        let mut headers = request_spec.headers.clone();
+        headers.extend(&options.headers);
         let mut params = headers_params(
-            headers,
+            &headers,
             request_spec.implicit_content_type.as_deref(),
             &request_spec.body,
         );
@@ -97,7 +93,7 @@ impl CurlCmd {
 }
 
 /// Returns the curl args corresponding to the HTTP method, from a request spec.
-fn method_params(request_spec: &RequestSpec, follow_location: bool) -> Vec<String> {
+fn method_params(request_spec: &RequestSpec, follow_location: FollowLocation) -> Vec<String> {
     let has_body = !request_spec.multipart.is_empty()
         || !request_spec.form.is_empty()
         || !request_spec.body.bytes().is_empty();
@@ -198,7 +194,7 @@ fn cookies_params(request_spec: &RequestSpec, cookie_store: &CookieStore) -> Vec
     let mut cookies_from_req = request_spec
         .cookies
         .iter()
-        .map(|c| (&c.name, &c.value))
+        .map(|c| (c.name.as_str(), c.value.as_str()))
         .collect::<Vec<_>>();
 
     // Constructs cookies values from cookie store for this URL, that are not expired
@@ -206,7 +202,7 @@ fn cookies_params(request_spec: &RequestSpec, cookie_store: &CookieStore) -> Vec
         .cookies()
         .filter(|c| !c.is_expired())
         .filter(|c| c.match_domain(&request_spec.url))
-        .map(|c| (&c.name, &c.value))
+        .map(|c| (c.name(), c.value()))
         .collect::<Vec<_>>();
 
     let mut all_cookies = vec![];
@@ -223,7 +219,7 @@ fn cookies_params(request_spec: &RequestSpec, cookie_store: &CookieStore) -> Vec
         .map(|(name, value)| format!("{name}={value}"))
         .collect::<Vec<String>>()
         .join("; ");
-    args.push(format!("'{value}'"));
+    args.push(encode_shell_string(&value));
     args
 }
 
@@ -298,7 +294,7 @@ fn encode_bytes(bytes: &[u8]) -> String {
 
 impl Method {
     /// Returns the curl args for HTTP method, given the request has a body or not.
-    fn curl_args(&self, has_body: bool, follow_location: bool) -> Vec<String> {
+    fn curl_args(&self, has_body: bool, follow_location: FollowLocation) -> Vec<String> {
         match self.0.as_str() {
             "GET" => {
                 if has_body {
@@ -321,7 +317,7 @@ impl Method {
                 // method of the redirection steps.
                 if has_body {
                     vec![]
-                } else if follow_location {
+                } else if matches!(follow_location, FollowLocation::Follow(_)) {
                     vec!["--data".to_string(), "''".to_string()]
                 } else {
                     vec!["--request".to_string(), "POST".to_string()]
@@ -428,6 +424,9 @@ impl ClientOptions {
             arguments.push("--cookie".to_string());
             arguments.push(cookie_file.clone());
         }
+        if self.digest {
+            arguments.push("--digest".to_string());
+        }
         match self.http_version {
             RequestedHttpVersion::Default => {}
             RequestedHttpVersion::Http10 => arguments.push("--http1.0".to_string()),
@@ -443,10 +442,14 @@ impl ClientOptions {
             IpResolve::IpV4 => arguments.push("--ipv4".to_string()),
             IpResolve::IpV6 => arguments.push("--ipv6".to_string()),
         }
-        if self.follow_location_trusted {
-            arguments.push("--location-trusted".to_string());
-        } else if self.follow_location {
-            arguments.push("--location".to_string());
+        match self.follow_location {
+            FollowLocation::Follow(CredentialForwarding::OnlyInitialHost) => {
+                arguments.push("--location".to_string());
+            }
+            FollowLocation::Follow(CredentialForwarding::AllHosts) => {
+                arguments.push("--location-trusted".to_string());
+            }
+            FollowLocation::No => {}
         }
         if let Some(max_filesize) = self.max_filesize {
             arguments.push("--max-filesize".to_string());
@@ -668,6 +671,10 @@ mod tests {
 
         let context_dir = ContextDir::default();
         let cookie_store = CookieStore::new();
+        let mut headers = HeaderVec::new();
+        headers.push(Header::new("Test-Header-1", "content-1"));
+        headers.push(Header::new("Test-Header-2", "content-2"));
+        headers.push(Header::new("Test-Header-Empty", ""));
         let options = ClientOptions {
             allow_reuse: true,
             aws_sigv4: None,
@@ -678,13 +685,9 @@ mod tests {
             connect_timeout: Duration::from_secs(20),
             connects_to: vec!["example.com:443:host-47.example.com:443".to_string()],
             cookie_input_file: Some("cookie_file".to_string()),
-            follow_location: true,
-            follow_location_trusted: false,
-            headers: vec![
-                "Test-Header-1: content-1".to_string(),
-                "Test-Header-2: content-2".to_string(),
-                "Test-Header-Empty:".to_string(),
-            ],
+            digest: false,
+            follow_location: FollowLocation::Follow(CredentialForwarding::OnlyInitialHost),
+            headers,
             http_version: RequestedHttpVersion::Http10,
             insecure: true,
             ip_resolve: IpResolve::IpV6,
@@ -708,6 +711,7 @@ mod tests {
             ssl_no_revoke: false,
             timeout: Duration::from_secs(10),
             unix_socket: Some("/var/run/example.sock".to_string()),
+            use_cookie_store: true,
             user: Some("user:password".to_string()),
             user_agent: Some("my-useragent".to_string()),
             verbosity: None,
@@ -1088,5 +1092,35 @@ mod tests {
         assert!(!escape_mode("\\"));
         assert!(escape_mode("'"));
         assert!(escape_mode("\n"));
+    }
+
+    #[test]
+    fn cookie_with_single_quote() {
+        let request = RequestSpec {
+            method: Method("GET".to_string()),
+            url: Url::from_str("http://localhost:8000/hello").unwrap(),
+            cookies: vec![crate::http::RequestCookie {
+                name: "cookie1".to_string(),
+                value: "value'with'quotes".to_string(),
+            }],
+            ..Default::default()
+        };
+
+        let context_dir = ContextDir::default();
+        let cookie_store = CookieStore::new();
+        let options = ClientOptions::default();
+        let output = None;
+
+        let cmd = CurlCmd::new(
+            &request,
+            &cookie_store,
+            &context_dir,
+            output.as_ref(),
+            &options,
+        );
+        assert_eq!(
+            cmd.to_string(),
+            "curl --cookie $'cookie1=value\\'with\\'quotes' 'http://localhost:8000/hello'"
+        );
     }
 }

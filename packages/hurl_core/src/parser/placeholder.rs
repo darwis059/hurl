@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  */
-use super::{expr, ParseResult};
+use super::{ParseResult, expr};
 use crate::ast::Placeholder;
 use crate::parser::primitives::{literal, try_literal, zero_or_more_spaces};
 use crate::reader::Reader;

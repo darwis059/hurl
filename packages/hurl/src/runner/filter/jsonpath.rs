@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,9 @@ pub fn eval_jsonpath(
             Err(_) => {
                 return Err(RunnerError::new(
                     source_info,
-                    RunnerErrorKind::FilterInvalidInput("value is not a valid JSON".to_string()),
+                    RunnerErrorKind::FilterInvalidInputValue(
+                        "value is not a valid JSON".to_string(),
+                    ),
                     false,
                 ));
             }
@@ -52,7 +54,10 @@ pub fn eval_jsonpath(
         //     }
         // },
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.kind().to_string());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "string".to_string(),
+            };
             return Err(RunnerError::new(source_info, kind, assert));
         }
     };
@@ -116,12 +121,10 @@ pub fn eval_jsonpath_json(
     };
 
     let results = jsonpath_query.eval(json);
-    match results {
-        None => Ok(None),
-        Some(jsonpath::JsonpathResult::SingleEntry(value)) => Ok(Some(Value::from_json(&value))),
-        Some(jsonpath::JsonpathResult::Collection(values)) => {
-            Ok(Some(Value::from_json(&serde_json::Value::Array(values))))
-        }
+    match results.len() {
+        0 => Ok(None),
+        1 => Ok(Some(Value::from_json(&results[0]))),
+        _ => Ok(Some(Value::from_json(&serde_json::Value::Array(results)))),
     }
 }
 

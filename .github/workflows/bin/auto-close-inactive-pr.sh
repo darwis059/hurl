@@ -24,7 +24,7 @@ function usage(){
     echo
     echo "  --github-token <github token access> #mandatory"
     echo "      specify github user token with access to PR api"
-    echo "        : example: --github-token ghp_kJvDuaalZidk3nB1uYtgsqMrkQ5Hkh76jh2o"      
+    echo "        : example: --github-token ghp_xxxxxxxxxxxxxxxxxxxxxxxxx"      
     echo
     echo "  --max-days-of-inactivity <days> #optional"
     echo "      maximum days of inactivity before closing a PR"
@@ -84,7 +84,7 @@ function consume_args(){
             else
                 log_error "option $1" "can not be null"
                 usage >&2
-                return1
+                return 1
             fi
             ;;
         *)

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ use std::str;
 use std::str::FromStr;
 use std::time::Instant;
 
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use chrono::Utc;
 use curl::easy::{List, NetRc, SslOpt};
-use curl::{easy, Error, Version};
+use curl::{Error, Version, easy};
 use hurl_core::types::Count;
 
 use super::call::Call;
@@ -35,13 +35,15 @@ use super::debug;
 use super::easy_ext;
 use super::error::HttpError;
 use super::header::{
-    Header, HeaderVec, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, COOKIE, EXPECT, LOCATION,
+    ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, COOKIE, EXPECT, Header, HeaderVec, LOCATION,
     USER_AGENT,
 };
 use super::ip::IpAddr;
 use super::options::{ClientOptions, Verbosity};
 use super::param::Param;
-use super::request::{IpResolve, Request, RequestedHttpVersion};
+use super::request::{
+    CredentialForwarding, FollowLocation, IpResolve, Request, RequestedHttpVersion,
+};
 use super::request_cookie::RequestCookie;
 use super::request_spec::{Body, FileParam, Method, MultipartParam, RequestSpec};
 use super::response::{HttpVersion, Response};
@@ -100,7 +102,7 @@ impl Client {
         loop {
             let call = self.execute(&request_spec, &options, logger)?;
             // If we don't follow redirection, we can early exit here.
-            if !options.follow_location {
+            if matches!(options.follow_location, FollowLocation::No) {
                 calls.push(call);
                 break;
             }
@@ -116,10 +118,10 @@ impl Client {
             logger.debug(&format!("=> Redirect to {redirect_url}"));
             logger.debug("");
             redirect_count += 1;
-            if let Count::Finite(max_redirect) = options.max_redirect {
-                if redirect_count > max_redirect {
-                    return Err(HttpError::TooManyRedirect);
-                }
+            if let Count::Finite(max_redirect) = options.max_redirect
+                && redirect_count > max_redirect
+            {
+                return Err(HttpError::TooManyRedirect);
             };
 
             let redirect_method = redirect_method(status, &request_spec.method);
@@ -135,7 +137,7 @@ impl Client {
             if should_strip_credentials_on_redirect(
                 original_url,
                 &redirect_url,
-                options.follow_location_trusted,
+                options.follow_location,
             ) {
                 headers.retain(|h| !h.name_eq(AUTHORIZATION));
                 headers.retain(|h| !h.name_eq(COOKIE));
@@ -294,10 +296,10 @@ impl Client {
         // - <https://curl.se/docs/manpage.html#--max-filesize>
         // > Note: before curl 8.4.0, when the file size is not known prior to download, for such files
         // > this option has no effect even if the file transfer ends up being larger than this given limit.
-        if let Some(max_filesize) = options.max_filesize {
-            if response_body.len() as u64 > max_filesize {
-                return Err(HttpError::AllowedResponseSizeExceeded(max_filesize));
-            }
+        if let Some(max_filesize) = options.max_filesize
+            && response_body.len() as u64 > max_filesize
+        {
+            return Err(HttpError::AllowedResponseSizeExceeded(max_filesize));
         }
 
         let status = self.handle.response_code()?;
@@ -385,8 +387,15 @@ impl Client {
         // > requests with this handle.
         // > By passing the empty string ("") to this option, you enable the cookie
         // > engine without reading any initial cookies.
-        self.handle
-            .cookie_file(options.cookie_input_file.clone().unwrap_or_default())?;
+        if options.use_cookie_store {
+            self.handle
+                .cookie_file(options.cookie_input_file.clone().unwrap_or_default())?;
+        }
+        // FIXME: implements the else branch.
+        // We want to set CURLOPT_COOKIEFILE to NULL in case `options.use_cookie_store` is `false`
+        // because we want to support `--no-cookie-store` per request (for the moment the option is cli only).
+        // If a handle has been configured to use cookie storage, it should be reset if we deactivate
+        // cookie mid-file with a per-request
 
         // We check libcurl HTTP version support.
         let http_version = options.http_version;
@@ -474,8 +483,11 @@ impl Client {
         if let Some(pinned_pub_key) = &options.pinned_pub_key {
             self.handle.pinned_public_key(pinned_pub_key)?;
         }
-        if options.ntlm || options.negotiate {
+        if options.digest || options.ntlm || options.negotiate {
             let mut auth = easy::Auth::new();
+            if options.digest {
+                auth.digest(true);
+            }
             if options.ntlm {
                 auth.ntlm(true);
             }
@@ -496,31 +508,24 @@ impl Client {
         self.set_multipart(&request_spec.multipart)?;
         let request_spec_body = &request_spec.body.bytes();
         self.set_body(request_spec_body)?;
-        // TODO: do we want to manage the headers with no content? There are two type of no-content
-        // headers: `foo:` and `foo;`. The first one can be used to remove libcurl headers (`Host:`)
-        // while the second one is used to send an empty header.
-        // See <https://github.com/Orange-OpenSource/hurl/issues/3536>
-        let options_headers = options
-            .headers
-            .iter()
-            .map(|h| h.as_str())
-            .collect::<Vec<&str>>();
-        let headers = &request_spec.headers.with_raw_headers(&options_headers);
+
+        let mut headers = request_spec.headers.clone();
+        headers.extend(&options.headers);
         self.set_headers(
-            headers,
+            &headers,
             request_spec.implicit_content_type.as_deref(),
             options,
         )?;
-        if let Some(aws_sigv4) = &options.aws_sigv4 {
-            if let Err(e) = self.handle.aws_sigv4(aws_sigv4.as_str()) {
-                return match e.code() {
-                    curl_sys::CURLE_UNKNOWN_OPTION => Err(HttpError::LibcurlUnknownOption {
-                        option: "aws-sigv4".to_string(),
-                        minimum_version: "7.75.0".to_string(),
-                    }),
-                    _ => Err(e.into()),
-                };
-            }
+        if let Some(aws_sigv4) = &options.aws_sigv4
+            && let Err(e) = self.handle.aws_sigv4(aws_sigv4.as_str())
+        {
+            return match e.code() {
+                curl_sys::CURLE_UNKNOWN_OPTION => Err(HttpError::LibcurlUnknownOption {
+                    option: "aws-sigv4".to_string(),
+                    minimum_version: "7.75.0".to_string(),
+                }),
+                _ => Err(e.into()),
+            };
         }
         if *method == Method("HEAD".to_string()) {
             self.handle.nobody(true)?;
@@ -606,10 +611,13 @@ impl Client {
         }
 
         if let Some(user) = &options.user {
-            if options.aws_sigv4.is_some() || options.ntlm || options.negotiate {
+            if options.aws_sigv4.is_some() || options.digest || options.ntlm || options.negotiate {
                 // curl's aws_sigv4 support needs to know the username and password for the
                 // request, as it uses those values to calculate the Authorization header for the
                 // AWS V4 signature.
+                //
+                // --digest requires a username and password to be provided in order to complete the
+                // authentication process. With curl, this would be `--digest -u username:password`
                 //
                 // --ntlm requires a username and password to be provided in order to complete the
                 // authentication process. With curl, this would be `-u username:password`
@@ -790,13 +798,13 @@ impl Client {
         cookie_store
     }
 
-    /// Adds a cookie to the cookie jar.
+    /// Adds a cookie to the cookie jar (experimental).
     pub fn add_cookie(&mut self, cookie: &Cookie, logger: &mut Logger) {
         logger.debug(&format!("Add to cookie store <{cookie}> (experimental)"));
-        self.handle.cookie_list(&cookie.to_netscape_str()).unwrap();
+        self.handle.cookie_list(&cookie.to_netscape()).unwrap();
     }
 
-    /// Clears cookie storage.
+    /// Clears cookie storage (experimental).
     pub fn clear_cookie_storage(&mut self, logger: &mut Logger) {
         logger.debug("Clear cookie storage (experimental)");
         self.handle.cookie_list("ALL").unwrap();
@@ -854,9 +862,12 @@ impl Client {
 fn should_strip_credentials_on_redirect(
     original_url: &Url,
     redirect_url: &Url,
-    follow_location_trusted: bool,
+    follow_location: FollowLocation,
 ) -> bool {
-    if follow_location_trusted {
+    if matches!(
+        follow_location,
+        FollowLocation::Follow(CredentialForwarding::AllHosts)
+    ) {
         return false;
     }
     // Different origin != strip credentials
@@ -1102,48 +1113,48 @@ mod tests {
         let url3 = Url::from_str("https://example.com").unwrap();
         let url4 = Url::from_str("http://other.com").unwrap();
 
-        let follow_location_trusted = false;
+        let follow_location = FollowLocation::Follow(CredentialForwarding::OnlyInitialHost);
         assert!(should_strip_credentials_on_redirect(
             &url1,
             &url2,
-            follow_location_trusted
+            follow_location
         ));
         assert!(should_strip_credentials_on_redirect(
             &url1,
             &url3,
-            follow_location_trusted
+            follow_location
         ));
         assert!(should_strip_credentials_on_redirect(
             &url1,
             &url4,
-            follow_location_trusted
+            follow_location
         ));
         assert!(should_strip_credentials_on_redirect(
             &url1,
             &url3,
-            follow_location_trusted
+            follow_location
         ));
 
-        let follow_location_trusted = true;
+        let follow_location = FollowLocation::Follow(CredentialForwarding::AllHosts);
         assert!(!should_strip_credentials_on_redirect(
             &url1,
             &url2,
-            follow_location_trusted
+            follow_location
         ));
         assert!(!should_strip_credentials_on_redirect(
             &url1,
             &url3,
-            follow_location_trusted
+            follow_location
         ));
         assert!(!should_strip_credentials_on_redirect(
             &url1,
             &url4,
-            follow_location_trusted
+            follow_location
         ));
         assert!(!should_strip_credentials_on_redirect(
             &url1,
             &url3,
-            follow_location_trusted
+            follow_location
         ));
     }
 

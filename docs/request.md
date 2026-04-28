@@ -233,7 +233,6 @@ very-verbose: true         # allow more verbose output
 > Variable defined in an `[Options]` section are defined also for the next entries. This is
 > the exception, all other options are defined only for the current request.
 
-
 ### Query parameters
 
 Optional list of query parameters.
@@ -348,7 +347,6 @@ Content-Type: text/html
 ~~~
 
 > When using a multiline string body to send a multipart form data, files content must be inlined in the Hurl file.
-
 
 ### Cookies
 
@@ -475,7 +473,19 @@ POST https://example.org/api/dogs
 ```
 ~~~
 
+If you don't want templates to be evaluated inside JSON body you can use [multiline string body] with `raw` identifier:
 
+~~~hurl
+# {{name}} is not a variable
+POST https://example.org/api/cats
+Content-Type: application/json
+```raw
+{
+  "id": 42,
+  "name": "{{ name }}"
+}
+```
+~~~
 
 #### XML body
 
@@ -576,7 +586,6 @@ POST https://example.org/starwars/graphql
 
 > Hurl variables and GraphQL variables can be mixed in the same body.
 
-
 #### Multiline string body
 
 For text based body that are neither JSON nor XML, one can use multiline string, started and ending with
@@ -605,7 +614,23 @@ line3
 
 is evaluated as "line1\nline2\nline3\n".
 
-Multiline string body can use language identifier, like `json`, `xml` or `graphql`. Depending on the language identifier,
+Multiline string body can be [templatized with variables]:
+
+~~~hurl
+POST https://example.org/models
+[Options]
+variable: var1=lemon
+variable: var2=yellow
+```
+Fruit,Color
+{{var1}},{{var2}}
+```
+~~~
+
+Escapes are not processed (i.e. [Hurl Unicode literals] are not supported): `\n` is two consecutive
+chars (`\` followed by a `n`), not a single newline char.
+
+Multiline string body can use language identifier, like `json`, `xml`, `graphql` or `raw`. Depending on the language identifier,
 an additional 'Content-Type' request header is sent, and the real body (bytes sent over the wire) can be different from the 
 raw multiline text.
 
@@ -614,7 +639,22 @@ POST https://example.org/api/dogs
 ```json
 {
     "id": 0,
-    "name": "Frieda",
+    "name": "Frieda"
+}
+```
+~~~
+
+Raw multiline string body don't evaluate templates:
+
+~~~hurl
+# {{name}} is not a variable
+POST https://example.org/api/cats
+Content-Type: application/json
+```raw
+{
+    "id": 42,
+    "lives": {{ lives_count }},
+    "name": "{{ name }}"
 }
 ```
 ~~~
@@ -627,7 +667,6 @@ For text based body that do not contain newlines, one can use oneline string, st
 POST https://example.org/helloworld
 `Hello world!`
 ~~~
-
 
 #### Base64 body
 
@@ -656,7 +695,6 @@ PUT https://example.org
 # Send a café, encoded in UTF-8
 hex,636166c3a90a;
 ```
-
 
 #### File body
 
@@ -705,4 +743,4 @@ File are relative to the input Hurl file, and cannot contain implicit parent dir
 [GraphQL queries]: #graphql-query
 [GraphQL variables]: https://graphql.org/learn/queries/#variables
 [options]: #options
-
+[Hurl Unicode literals]: /docs/hurl-file.md#special-characters-in-strings

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ pub enum ParseErrorKind {
     JsonPathExpr,
     Method { name: String },
     Multiline,
-    MultilineAttribute(String),
+    MultilineLanguageHint(String),
     OddNumberOfHexDigits,
     Predicate,
     PredicateValue,
@@ -110,7 +110,7 @@ impl DisplaySourceError for ParseError {
             ParseErrorKind::JsonPathExpr => "Parsing JSONPath expression".to_string(),
             ParseErrorKind::Method { .. } => "Parsing method".to_string(),
             ParseErrorKind::Multiline => "Parsing multiline".to_string(),
-            ParseErrorKind::MultilineAttribute(..) => "Parsing multiline".to_string(),
+            ParseErrorKind::MultilineLanguageHint(..) => "Parsing multiline".to_string(),
             ParseErrorKind::OddNumberOfHexDigits => "Parsing hex bytearray".to_string(),
             ParseErrorKind::Predicate => "Parsing predicate".to_string(),
             ParseErrorKind::PredicateValue => "Parsing predicate value".to_string(),
@@ -163,6 +163,7 @@ impl DisplaySourceError for ParseError {
                     "connect-timeout",
                     "connect-to",
                     "delay",
+                    "digest",
                     "header",
                     "http1.0",
                     "http1.1",
@@ -181,7 +182,7 @@ impl DisplaySourceError for ParseError {
                     "netrc",
                     "netrc-file",
                     "netrc-optional",
-                    "noproxy",
+                    "no-proxy",
                     "ntlm",
                     "output",
                     "path-as-is",
@@ -196,6 +197,7 @@ impl DisplaySourceError for ParseError {
                     "user",
                     "variable",
                     "verbose",
+                    "verbosity",
                     "very-verbose",
                 ];
                 let default = format!("Valid values are {}", valid_values.join(", "));
@@ -221,7 +223,7 @@ impl DisplaySourceError for ParseError {
                 format!("the HTTP method <{name}> is not valid. {did_you_mean}")
             }
             ParseErrorKind::Multiline => "the multiline is not valid".to_string(),
-            ParseErrorKind::MultilineAttribute(name) => format!("Invalid attribute {name}"),
+            ParseErrorKind::MultilineLanguageHint(name) => format!("Invalid language hint {name}"),
             ParseErrorKind::OddNumberOfHexDigits => {
                 "expecting an even number of hex digits".to_string()
             }
@@ -232,13 +234,7 @@ impl DisplaySourceError for ParseError {
                 "this is not a valid section for a request".to_string()
             }
             ParseErrorKind::RequestSectionName { name } => {
-                let valid_values = [
-                    "QueryStringParams",
-                    "FormParams",
-                    "MultipartFormData",
-                    "Cookies",
-                    "Options",
-                ];
+                let valid_values = ["Query", "Form", "Multipart", "Cookies", "Options"];
                 let default = format!("Valid values are {}", valid_values.join(", "));
                 let did_you_mean = did_you_mean(&valid_values, name.as_str(), &default);
                 format!("the section is not valid. {did_you_mean}")
@@ -260,7 +256,7 @@ impl DisplaySourceError for ParseError {
             ParseErrorKind::UrlInvalidStart => "expecting http://, https:// or {{".to_string(),
             ParseErrorKind::Variable(message) => message.clone(),
             ParseErrorKind::Version => {
-                "HTTP version must be HTTP, HTTP/1.0, HTTP/1.1 or HTTP/2".to_string()
+                "HTTP version must be HTTP, HTTP/1.0, HTTP/1.1, HTTP/2 or HTTP/3".to_string()
             }
             ParseErrorKind::XPathExpr => "expecting a XPath expression".to_string(),
             ParseErrorKind::Xml => "invalid XML".to_string(),

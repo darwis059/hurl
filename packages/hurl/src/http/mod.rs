@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,17 @@
 pub use self::call::Call;
 pub use self::certificate::Certificate;
 pub(crate) use self::client::Client;
-pub use self::cookie_store::Cookie;
+pub use self::cookie_store::{Cookie, CookieStore};
 pub use self::curl_cmd::CurlCmd;
 pub(crate) use self::error::HttpError;
 pub use self::header::{
-    Header, HeaderVec, ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, COOKIE, EXPECT, USER_AGENT,
+    ACCEPT_ENCODING, AUTHORIZATION, CONTENT_TYPE, COOKIE, EXPECT, Header, HeaderVec, USER_AGENT,
 };
 pub(crate) use self::options::{ClientOptions, Verbosity};
 pub(crate) use self::param::Param;
-pub use self::request::{IpResolve, Request, RequestedHttpVersion};
+pub use self::request::{
+    CredentialForwarding, FollowLocation, IpResolve, Request, RequestedHttpVersion,
+};
 pub(crate) use self::request_cookie::RequestCookie;
 pub(crate) use self::request_spec::{Body, FileParam, Method, MultipartParam, RequestSpec};
 pub use self::response::{HttpVersion, Response};

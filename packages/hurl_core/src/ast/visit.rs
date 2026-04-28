@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,13 +22,14 @@
 //! Code heavily inspired from <https://github.com/rust-lang/rust/blob/master/compiler/rustc_ast/src/visit.rs>
 use crate::ast::{
     Assert, Base64, Body, BooleanOption, Bytes, Capture, Comment, Cookie, CookiePath, CountOption,
-    DurationOption, Entry, EntryOption, File, FilenameParam, FilenameValue, Filter, FilterValue,
-    Hex, HurlFile, IntegerValue, JsonValue, KeyValue, LineTerminator, Method, MultilineString,
-    MultipartParam, NaturalOption, Number, OptionKind, Placeholder, Predicate, PredicateFuncValue,
-    PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response, Section, SectionValue,
-    StatusValue, Template, VariableDefinition, VariableValue, VersionValue, Whitespace, U64,
+    Duration, DurationOption, Entry, EntryOption, File, FilenameParam, FilenameValue, Filter,
+    FilterValue, Hex, HurlFile, IntegerValue, JsonValue, KeyValue, LineTerminator, Method,
+    MultilineString, MultipartParam, NaturalOption, Number, OptionKind, Placeholder, Predicate,
+    PredicateFuncValue, PredicateValue, Query, QueryValue, Regex, RegexValue, Request, Response,
+    Section, SectionValue, StatusValue, Template, U64, VariableDefinition, VariableValue,
+    VerbosityOption, VersionValue, Whitespace,
 };
-use crate::types::{Count, Duration, DurationUnit, SourceString, ToSource};
+use crate::types::{Count, DurationUnit, SourceString, ToSource};
 
 /// Each method of the `Visitor` trait is a hook to be potentially overridden. Each method's default
 /// implementation recursively visits the substructure of the input via the corresponding `walk` method;
@@ -219,6 +220,10 @@ pub trait Visitor: Sized {
         walk_variable_value(self, value);
     }
 
+    fn visit_verbosity_option(&mut self, value: &VerbosityOption) {
+        walk_verbosity_option(self, value);
+    }
+
     fn visit_version(&mut self, value: &VersionValue) {}
 
     fn visit_xml_body(&mut self, xml: &str) {}
@@ -363,6 +368,7 @@ pub fn walk_entry_option<V: Visitor>(visitor: &mut V, option: &EntryOption) {
         OptionKind::ConnectTo(value) => visitor.visit_template(value),
         OptionKind::ConnectTimeout(value) => visitor.visit_duration_option(value),
         OptionKind::Delay(value) => visitor.visit_duration_option(value),
+        OptionKind::Digest(value) => visitor.visit_bool_option(value),
         OptionKind::FollowLocation(value) => visitor.visit_bool_option(value),
         OptionKind::FollowLocationTrusted(value) => visitor.visit_bool_option(value),
         OptionKind::Header(value) => visitor.visit_template(value),
@@ -394,6 +400,7 @@ pub fn walk_entry_option<V: Visitor>(visitor: &mut V, option: &EntryOption) {
         OptionKind::User(value) => visitor.visit_template(value),
         OptionKind::Variable(value) => visitor.visit_variable_def(value),
         OptionKind::Verbose(value) => visitor.visit_bool_option(value),
+        OptionKind::Verbosity(value) => visitor.visit_verbosity_option(value),
         OptionKind::VeryVerbose(value) => visitor.visit_bool_option(value),
     };
     visitor.visit_lt(&option.line_terminator0);
@@ -414,6 +421,10 @@ pub fn walk_filter<V: Visitor>(visitor: &mut V, filter: &Filter) {
         FilterValue::Base64Encode => {}
         FilterValue::Base64UrlSafeDecode => {}
         FilterValue::Base64UrlSafeEncode => {}
+        FilterValue::CharsetDecode { space0, encoding } => {
+            visitor.visit_whitespace(space0);
+            visitor.visit_template(encoding);
+        }
         FilterValue::Count => {}
         FilterValue::DaysAfterNow => {}
         FilterValue::DaysBeforeNow => {}
@@ -624,6 +635,7 @@ pub fn walk_query<V: Visitor>(visitor: &mut V, query: &Query) {
         | QueryValue::Url
         | QueryValue::Duration
         | QueryValue::Bytes
+        | QueryValue::RawBytes
         | QueryValue::Sha256
         | QueryValue::Md5
         | QueryValue::Version
@@ -802,10 +814,14 @@ pub fn walk_variable_value<V: Visitor>(visitor: &mut V, value: &VariableValue) {
     }
 }
 
+pub fn walk_verbosity_option<V: Visitor>(visitor: &mut V, value: &VerbosityOption) {
+    visitor.visit_string(value.identifier());
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast::visit::Visitor;
     use crate::ast::Assert;
+    use crate::ast::visit::Visitor;
     use crate::parser;
 
     #[test]

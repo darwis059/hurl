@@ -39,17 +39,17 @@ GET http://localhost:8000/runner_errors
 [Options]
 output: undefined/output
 
-# FilterDecode
+# FilterCharsetDecode
 GET http://localhost:8000/runner_errors
 HTTP 200
 [Asserts]
-md5 decode "utf-8" == "café"
+md5 charsetDecode "utf-8" == "café"
 
 # FilterInvalidEncoding
 GET http://localhost:8000/runner_errors
 HTTP 200
 [Asserts]
-bytes decode "toto" == "café"
+bytes charsetDecode "toto" == "café"
 
 # FilterInvalidInput
 GET http://localhost:8000/runner_errors
@@ -169,3 +169,8 @@ GET http://localhost:8000/runner_errors/unsupported-content-encoding
 HTTP 200
 [Asserts]
 bytes count == 10
+
+# Invalid option value
+GET http://localhost:8000/runner_errors
+[Options]
+header: aaa

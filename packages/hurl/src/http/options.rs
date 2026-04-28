@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ use std::time::Duration;
 
 use hurl_core::types::{BytesPerSec, Count};
 
-use super::request::{IpResolve, RequestedHttpVersion};
+use super::header::HeaderVec;
+use super::request::{FollowLocation, IpResolve, RequestedHttpVersion};
 
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
@@ -36,9 +37,9 @@ pub struct ClientOptions {
     pub connect_timeout: Duration,
     pub connects_to: Vec<String>,
     pub cookie_input_file: Option<String>,
-    pub follow_location: bool,
-    pub follow_location_trusted: bool,
-    pub headers: Vec<String>,
+    pub digest: bool,
+    pub follow_location: FollowLocation,
+    pub headers: HeaderVec,
     pub http_version: RequestedHttpVersion,
     pub insecure: bool,
     pub ip_resolve: IpResolve,
@@ -59,6 +60,7 @@ pub struct ClientOptions {
     pub ssl_no_revoke: bool,
     pub timeout: Duration,
     pub unix_socket: Option<String>,
+    pub use_cookie_store: bool,
     pub user: Option<String>,
     pub user_agent: Option<String>,
     pub verbosity: Option<Verbosity>,
@@ -67,6 +69,7 @@ pub struct ClientOptions {
 // FIXME/ we could implement copy here
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verbosity {
+    LowVerbose,
     Verbose,
     VeryVerbose,
 }
@@ -83,9 +86,9 @@ impl Default for ClientOptions {
             connect_timeout: Duration::from_secs(300),
             connects_to: vec![],
             cookie_input_file: None,
-            follow_location: false,
-            follow_location_trusted: false,
-            headers: vec![],
+            digest: false,
+            follow_location: FollowLocation::default(),
+            headers: HeaderVec::new(),
             http_version: RequestedHttpVersion::default(),
             insecure: false,
             ip_resolve: IpResolve::default(),
@@ -106,6 +109,7 @@ impl Default for ClientOptions {
             ssl_no_revoke: false,
             timeout: Duration::from_secs(300),
             unix_socket: None,
+            use_cookie_store: true,
             user: None,
             user_agent: None,
             verbosity: None,

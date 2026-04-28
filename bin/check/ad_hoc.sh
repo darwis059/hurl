@@ -7,14 +7,25 @@ color_green=$(echo -ne "\033[1;32m")
 color_reset=$(echo -e "\033[0m")
 errors_count=0
 
+# Check that action uses version as comment
+echo "------------------------------------------------------------------------------------------"
+while read -r action_file action_line action_name action_hash action_version ; do
+    if [[ ! "$action_version" =~ v.*\. ]] ; then
+	echo "Version is missing as comment (#vx.y.z) for $action_name@$action_hash action at the end of line n°$action_line in ${color_red}$action_file${color_reset}"
+        errors_count=$((errors_count+1))
+    else
+        echo "Version is present as comment (#vx.y.z) for $action_name@$action_hash action at the end of line n°$action_line in ${color_green}$action_file${color_reset}"
+    fi
+done < <(grep -Rn 'uses: actions/' .github/workflows/*.yml | tr ':@#' ' ' | tr -s ' ' | sed "s/uses //g" | sed "s/actions\///g")
+
 # Check *.rs Orange Copyright
 echo "------------------------------------------------------------------------------------------"
 while read -r rust_file ; do
-    if [ "$(grep -c "Copyright (C) 2025 Orange" "$rust_file" || true)" -eq 0 ] ; then
-        echo "Missing [Copyright (C) 2025 Orange] in ${color_red}${rust_file}${color_reset}"
+    if [ "$(grep -c "Copyright (C) 2026 Orange" "$rust_file" || true)" -eq 0 ] ; then
+        echo "Missing [Copyright (C) 2026 Orange] in ${color_red}${rust_file}${color_reset}"
         errors_count=$((errors_count+1))
     else
-        echo "[Copyright (C) 2025 Orange] is present in ${color_green}${rust_file}${color_reset}"
+        echo "[Copyright (C) 2026 Orange] is present in ${color_green}${rust_file}${color_reset}"
     fi
 done < <(find packages -type f -name "*.rs")
 
@@ -79,7 +90,6 @@ tmp_sh="/tmp/sh"
 tmp_ps1="/tmp/ps1"
 tmp_diff="/tmp/diff"
 touch "${tmp_sh}" "${tmp_ps1}" "${tmp_diff}"
-command -v icdiff >/dev/null 2>&1 || sudo apt-get install -qq -y icdiff > /dev/null 2>&1
 if tput cols >/dev/null 2>&1 ; then
     nb_cols="$(tput cols)"
 else

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  */
 use std::fmt;
 
-use super::header::{HeaderVec, COOKIE};
+use super::header::{COOKIE, HeaderVec};
 use super::request_cookie::RequestCookie;
 use super::url::Url;
 
@@ -69,6 +69,26 @@ pub enum IpResolve {
     Default,
     IpV4,
     IpV6,
+}
+
+/// Do the HTTP client follow redirection, or not?
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum FollowLocation {
+    /// No redirection is followed
+    #[default]
+    No,
+    /// Redirection is followed, credentials are passed only to the initial host, or all hosts
+    /// depending on the credential forwarding mode.
+    Follow(CredentialForwarding),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum CredentialForwarding {
+    /// Credentials are only forwarded to the initial host
+    #[default]
+    OnlyInitialHost,
+    /// Credentials are forwarded to all hosts involved in the redirection
+    AllHosts,
 }
 
 impl Request {

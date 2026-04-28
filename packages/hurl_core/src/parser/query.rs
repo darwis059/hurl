@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
  *
  */
 use crate::ast::{CertificateAttributeName, Query, QueryValue, RegexValue, SourceInfo};
-use crate::combinator::{choice, ParseError as ParseErrorTrait};
+use crate::combinator::{ParseError as ParseErrorTrait, choice};
 use crate::parser::cookiepath::cookiepath;
 use crate::parser::primitives::{literal, one_or_more_spaces, regex, try_literal};
 use crate::parser::string::{quoted_oneline_string, quoted_template};
@@ -48,6 +48,7 @@ fn query_value(reader: &mut Reader) -> ParseResult<QueryValue> {
             variable_query,
             duration_query,
             bytes_query,
+            rawbytes_query,
             sha256_query,
             md5_query,
             certificate_query,
@@ -177,6 +178,11 @@ fn bytes_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     Ok(QueryValue::Bytes)
 }
 
+fn rawbytes_query(reader: &mut Reader) -> ParseResult<QueryValue> {
+    try_literal("rawbytes", reader)?;
+    Ok(QueryValue::RawBytes)
+}
+
 fn sha256_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     try_literal("sha256", reader)?;
     Ok(QueryValue::Sha256)
@@ -219,9 +225,13 @@ fn certificate_field(reader: &mut Reader) -> ParseResult<CertificateAttributeNam
         Ok(CertificateAttributeName::ExpireDate)
     } else if try_literal(r#"Serial-Number""#, reader).is_ok() {
         Ok(CertificateAttributeName::SerialNumber)
+    } else if try_literal(r#"Subject-Alt-Name""#, reader).is_ok() {
+        Ok(CertificateAttributeName::SubjectAltName)
+    } else if try_literal(r#"Value""#, reader).is_ok() {
+        Ok(CertificateAttributeName::Value)
     } else {
         let value =
-            "Field <Subject>, <Issuer>, <Start-Date>, <Expire-Date> or <Serial-Number>".to_string();
+            "Field <Subject>, <Issuer>, <Start-Date>, <Expire-Date>, <Serial-Number>, <Subject-Alt-Name> or <Value>".to_string();
         let kind = ParseErrorKind::Expecting { value };
         let cur = reader.cursor();
         Err(ParseError::new(cur.pos, false, kind))
@@ -345,7 +355,9 @@ mod tests {
             },
         );
 
-        let mut reader = Reader::new("xpath \"normalize-space(//div[contains(concat(' ',normalize-space(@class),' '),' monthly-price ')])\"");
+        let mut reader = Reader::new(
+            "xpath \"normalize-space(//div[contains(concat(' ',normalize-space(@class),' '),' monthly-price ')])\"",
+        );
         assert_eq!(xpath_query(&mut reader).unwrap(), QueryValue::Xpath {
             space0: Whitespace { value: String::from(" "), source_info: SourceInfo::new(Pos::new(1, 6), Pos::new(1, 7)) },
             expr: Template::new(
@@ -425,5 +437,29 @@ mod tests {
             )]
         );
         assert_eq!(reader.cursor().index, CharPos(14));
+    }
+
+    #[test]
+    fn test_bytes_query() {
+        let mut reader = Reader::new("bytes");
+        assert_eq!(
+            query(&mut reader).unwrap(),
+            Query {
+                source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 6)),
+                value: QueryValue::Bytes,
+            }
+        );
+    }
+
+    #[test]
+    fn test_rawbytes_query() {
+        let mut reader = Reader::new("rawbytes");
+        assert_eq!(
+            query(&mut reader).unwrap(),
+            Query {
+                source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 9)),
+                value: QueryValue::RawBytes,
+            }
+        );
     }
 }

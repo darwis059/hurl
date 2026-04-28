@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ use core::fmt;
 use std::fmt::Formatter;
 
 /// Represents the storage of cookies for an HTTP client.
-#[derive(Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CookieStore {
     cookies: Vec<Cookie>,
 }
@@ -33,7 +33,7 @@ impl CookieStore {
 
     /// Add a new cookie from a Netscape formatted string <http://www.cookiecentral.com/faq/#3.5>.
     pub fn add_cookie(&mut self, netscape_str: &str) -> Result<(), ParseCookieError> {
-        let cookie = Cookie::from_netscape_str(netscape_str)?;
+        let cookie = Cookie::from_netscape(netscape_str)?;
         self.cookies.push(cookie);
         Ok(())
     }
@@ -43,9 +43,33 @@ impl CookieStore {
         self.cookies.iter()
     }
 
+    /// Returns the number of cookies in this store.
+    pub fn len(&self) -> usize {
+        self.cookies.len()
+    }
+
+    /// Returns true if this cookie store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.cookies.len() == 0
+    }
+
     /// Consumes the store and transform it into a vec of [`Cookie`]
     pub fn into_vec(self) -> Vec<Cookie> {
         self.cookies
+    }
+
+    /// Formats this cookie store using Netscape cookie format.
+    ///
+    /// <http://www.cookiecentral.com/faq/#3.5>
+    ///
+    /// See [`Cookie::to_netscape`]
+    pub fn to_netscape(&self) -> String {
+        let mut out = String::new();
+        for cookie in &self.cookies {
+            out.push_str(&cookie.to_netscape());
+            out.push('\n');
+        }
+        out
     }
 }
 
@@ -55,18 +79,19 @@ impl CookieStore {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Cookie {
     /// Defines the host to which the cookie will be sent.
-    pub domain: String,
-    pub include_subdomain: String,
+    domain: String,
+    include_subdomain: bool,
     /// Indicates the path that must exist in the requested URL for the browser to send the Cookie header.
-    pub path: String,
+    path: String,
     /// Indicates that the cookie is sent to the server only when a request is made with the https: scheme
-    pub https: String,
+    https: bool,
     /// Indicates the maximum lifetime of the cookie as an HTTP-date timestamp.
-    pub expires: String,
-    pub name: String,
-    pub value: String,
+    /// (`0` is for session cookie, `1` for expired cookie (from libcurl)).
+    expires: u64,
+    name: String,
+    value: String,
     /// Forbids JavaScript from accessing the cookie.
-    pub http_only: bool,
+    http_only: bool,
 }
 
 impl Cookie {
@@ -93,14 +118,20 @@ impl Cookie {
     /// > - number of seconds since Jan 1, 1970 00:00:00 GMT.
     /// > - name - The name of the variable.
     /// > - value - The value of the variable.
-    pub fn to_netscape_str(&self) -> String {
+    pub fn to_netscape(&self) -> String {
+        let include_subdomain = if self.include_subdomain {
+            "TRUE"
+        } else {
+            "FALSE"
+        };
+        let https = if self.https { "TRUE" } else { "FALSE" };
         format!(
             "{}{}\t{}\t{}\t{}\t{}\t{}\t{}",
             if self.http_only { "#HttpOnly_" } else { "" },
             self.domain,
-            self.include_subdomain,
+            include_subdomain,
             self.path,
-            self.https,
+            https,
             self.expires,
             self.name,
             self.value
@@ -108,7 +139,7 @@ impl Cookie {
     }
 
     /// Creates a [`Cookie`] from a Netscape cookie formatted string.
-    pub fn from_netscape_str(s: &str) -> Result<Self, ParseCookieError> {
+    pub fn from_netscape(s: &str) -> Result<Self, ParseCookieError> {
         let mut tokens = CookieAttributes::new(s);
         let (http_only, domain) = if let Some(v) = tokens.next() {
             if let Some(domain) = v.strip_prefix("#HttpOnly_") {
@@ -119,23 +150,26 @@ impl Cookie {
         } else {
             return Err(ParseCookieError);
         };
-        let include_subdomain = if let Some(v) = tokens.next() {
-            v.to_string()
-        } else {
-            return Err(ParseCookieError);
+        let include_subdomain = match tokens.next() {
+            Some("TRUE") => true,
+            Some("FALSE") => false,
+            _ => return Err(ParseCookieError),
         };
         let path = if let Some(v) = tokens.next() {
             v.to_string()
         } else {
             return Err(ParseCookieError);
         };
-        let https = if let Some(v) = tokens.next() {
-            v.to_string()
-        } else {
-            return Err(ParseCookieError);
+        let https = match tokens.next() {
+            Some("TRUE") => true,
+            Some("FALSE") => false,
+            _ => return Err(ParseCookieError),
         };
         let expires = if let Some(v) = tokens.next() {
-            v.to_string()
+            match v.parse::<u64>() {
+                Ok(v) => v,
+                Err(_) => return Err(ParseCookieError),
+            }
         } else {
             return Err(ParseCookieError);
         };
@@ -161,13 +195,38 @@ impl Cookie {
         })
     }
 
+    pub fn domain(&self) -> &str {
+        &self.domain
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
+    pub fn expires(&self) -> u64 {
+        self.expires
+    }
+
+    pub fn https(&self) -> bool {
+        self.https
+    }
+
     pub fn is_expired(&self) -> bool {
+        // From <https://github.com/curl/curl/blob/master/lib/cookie.c> see `parse_cookie_header`
         // cookie expired when libcurl set value to 1?
-        self.expires == "1"
+        self.expires == 1
     }
 
     pub fn include_subdomain(&self) -> bool {
-        self.include_subdomain == "TRUE"
+        self.include_subdomain
     }
 
     pub fn match_domain(&self, url: &Url) -> bool {
@@ -188,7 +247,7 @@ impl Cookie {
 
 impl fmt::Display for Cookie {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let repr = self.to_netscape_str();
+        let repr = self.to_netscape();
         write!(f, "{repr}")
     }
 }
@@ -274,26 +333,26 @@ mod tests {
     #[test]
     pub fn parse_cookie_from_str() {
         assert_eq!(
-            Cookie::from_netscape_str("httpbin.org\tFALSE\t/\tFALSE\t0\tcookie1\tvalueA").unwrap(),
+            Cookie::from_netscape("httpbin.org\tFALSE\t/\tFALSE\t0\tcookie1\tvalueA").unwrap(),
             Cookie {
                 domain: "httpbin.org".to_string(),
-                include_subdomain: "FALSE".to_string(),
+                include_subdomain: false,
                 path: "/".to_string(),
-                https: "FALSE".to_string(),
-                expires: "0".to_string(),
+                https: false,
+                expires: 0,
                 name: "cookie1".to_string(),
                 value: "valueA".to_string(),
                 http_only: false,
             }
         );
         assert_eq!(
-            Cookie::from_netscape_str("localhost\tFALSE\t/\tFALSE\t1\tcookie2\t").unwrap(),
+            Cookie::from_netscape("localhost\tFALSE\t/\tFALSE\t1\tcookie2\t").unwrap(),
             Cookie {
                 domain: "localhost".to_string(),
-                include_subdomain: "FALSE".to_string(),
+                include_subdomain: false,
                 path: "/".to_string(),
-                https: "FALSE".to_string(),
-                expires: "1".to_string(),
+                https: false,
+                expires: 1,
                 name: "cookie2".to_string(),
                 value: String::new(),
                 http_only: false,
@@ -301,13 +360,13 @@ mod tests {
         );
 
         assert_eq!(
-            Cookie::from_netscape_str("localhost FALSE / FALSE 1 cookie3 value3").unwrap(),
+            Cookie::from_netscape("localhost FALSE / FALSE 1 cookie3 value3").unwrap(),
             Cookie {
                 domain: "localhost".to_string(),
-                include_subdomain: "FALSE".to_string(),
+                include_subdomain: false,
                 path: "/".to_string(),
-                https: "FALSE".to_string(),
-                expires: "1".to_string(),
+                https: false,
+                expires: 1,
                 name: "cookie3".to_string(),
                 value: "value3".to_string(),
                 http_only: false,
@@ -315,13 +374,13 @@ mod tests {
         );
 
         assert_eq!(
-            Cookie::from_netscape_str("#HttpOnly_localhost FALSE / FALSE 1 cookie3 a b c").unwrap(),
+            Cookie::from_netscape("#HttpOnly_localhost FALSE / FALSE 1 cookie3 a b c").unwrap(),
             Cookie {
                 domain: "localhost".to_string(),
-                include_subdomain: "FALSE".to_string(),
+                include_subdomain: false,
                 path: "/".to_string(),
-                https: "FALSE".to_string(),
-                expires: "1".to_string(),
+                https: false,
+                expires: 1,
                 name: "cookie3".to_string(),
                 value: "a b c".to_string(),
                 http_only: true,
@@ -329,7 +388,7 @@ mod tests {
         );
 
         assert_eq!(
-            Cookie::from_netscape_str("xxx").err().unwrap(),
+            Cookie::from_netscape("xxx").err().unwrap(),
             ParseCookieError
         );
     }
@@ -338,10 +397,10 @@ mod tests {
     fn test_match_cookie() {
         let cookie = Cookie {
             domain: "example.com".to_string(),
-            include_subdomain: "FALSE".to_string(),
+            include_subdomain: false,
             path: "/".to_string(),
-            https: String::new(),
-            expires: String::new(),
+            https: true,
+            expires: 0,
             name: String::new(),
             value: String::new(),
             http_only: false,
@@ -352,10 +411,10 @@ mod tests {
 
         let cookie = Cookie {
             domain: "example.com".to_string(),
-            include_subdomain: "TRUE".to_string(),
+            include_subdomain: true,
             path: "/toto".to_string(),
-            https: String::new(),
-            expires: String::new(),
+            https: true,
+            expires: 0,
             name: String::new(),
             value: String::new(),
             http_only: false,
@@ -367,10 +426,10 @@ mod tests {
         // Legacy cookie domain with dot prefix
         let cookie = Cookie {
             domain: ".example.com".to_string(),
-            include_subdomain: "TRUE".to_string(),
+            include_subdomain: true,
             path: "/foo".to_string(),
-            https: String::new(),
-            expires: String::new(),
+            https: true,
+            expires: 0,
             name: String::new(),
             value: String::new(),
             http_only: false,
@@ -392,6 +451,9 @@ mod tests {
                 "#HttpOnly_example.com\t\t   FALSE\t\t  \t/\tFALSE\t1\tcookie2\tfoo bar baz",
             )
             .unwrap();
+        assert_eq!(cookie_store.len(), 2);
+        assert!(!cookie_store.is_empty());
+
         let cookies = cookie_store.into_vec();
 
         assert_eq!(cookies.len(), 2);
@@ -399,10 +461,10 @@ mod tests {
             cookies[0],
             Cookie {
                 domain: "localhost".to_string(),
-                include_subdomain: "TRUE".to_string(),
+                include_subdomain: true,
                 path: "/".to_string(),
-                https: "FALSE".to_string(),
-                expires: "0".to_string(),
+                https: false,
+                expires: 0,
                 name: "cookie1".to_string(),
                 value: "valueA".to_string(),
                 http_only: false,
@@ -412,14 +474,31 @@ mod tests {
             cookies[1],
             Cookie {
                 domain: "example.com".to_string(),
-                include_subdomain: "FALSE".to_string(),
+                include_subdomain: false,
                 path: "/".to_string(),
-                https: "FALSE".to_string(),
-                expires: "1".to_string(),
+                https: false,
+                expires: 1,
                 name: "cookie2".to_string(),
                 value: "foo bar baz".to_string(),
                 http_only: true,
             }
+        );
+    }
+
+    #[test]
+    fn test_cookie_store_to_netscapoe() {
+        let mut cookie_store = CookieStore::new();
+        cookie_store
+            .add_cookie("localhost  TRUE    /   FALSE   0   cookie1 valueA")
+            .unwrap();
+        cookie_store
+            .add_cookie(
+                "#HttpOnly_example.com\t\t   FALSE\t\t  \t/\tFALSE\t1\tcookie2\tfoo bar baz",
+            )
+            .unwrap();
+        assert_eq!(
+            cookie_store.to_netscape(),
+            "localhost\tTRUE\t/\tFALSE\t0\tcookie1\tvalueA\n#HttpOnly_example.com\tFALSE\t/\tFALSE\t1\tcookie2\tfoo bar baz\n"
         );
     }
 }

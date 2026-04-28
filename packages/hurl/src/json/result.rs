@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ impl HurlResult {
     }
 
     /// Checks if a JSON value can be deserialized to a `HurlResult` instance.
-    /// This method can be used to check if the schema of the `value` is conform to
+    /// This method can be used to check if the schema of the `value` is conformed to
     /// a `HurlResult`.
     pub fn is_deserializable(value: &serde_json::Value) -> bool {
         serde_json::from_value::<HurlResultJson>(value.clone()).is_ok()
@@ -86,10 +86,10 @@ struct EntryResultJson {
 #[derive(Deserialize, Serialize)]
 struct CookieJson {
     domain: String,
-    include_subdomain: String,
+    include_subdomain: bool,
     path: String,
-    https: String,
-    expires: String,
+    https: bool,
+    expires: u64,
     name: String,
     value: String,
 }
@@ -189,11 +189,20 @@ struct ResponseCookieJson {
 
 #[derive(Deserialize, Serialize)]
 struct CertificateJson {
-    subject: String,
-    issuer: String,
-    start_date: String,
-    expire_date: String,
-    serial_number: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subject: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    issuer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expire_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    serial_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subject_alt_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value: Option<String>,
 }
 
 impl HurlResultJson {
@@ -210,8 +219,8 @@ impl HurlResultJson {
             .map(|e| EntryResultJson::from_entry(e, content, filename, response_dir, secrets))
             .collect::<Result<Vec<_>, _>>()?;
         let cookies = result
-            .cookies
-            .iter()
+            .cookie_store
+            .cookies()
             .map(|c| CookieJson::from_cookie(c, secrets))
             .collect::<Vec<_>>();
         Ok(HurlResultJson {
@@ -262,13 +271,13 @@ impl EntryResultJson {
 impl CookieJson {
     fn from_cookie(c: &Cookie, secrets: &[&str]) -> Self {
         CookieJson {
-            domain: c.domain.clone(),
-            include_subdomain: c.include_subdomain.clone(),
-            path: c.path.clone(),
-            https: c.https.clone(),
-            expires: c.expires.clone(),
-            name: c.name.clone(),
-            value: c.value.redact(secrets),
+            domain: c.domain().to_string(),
+            include_subdomain: c.include_subdomain(),
+            path: c.path().to_string(),
+            https: c.https(),
+            expires: c.expires(),
+            name: c.name().to_string(),
+            value: c.value().redact(secrets),
         }
     }
 }
@@ -443,11 +452,13 @@ impl ResponseCookieJson {
 impl CertificateJson {
     fn from_certificate(c: &Certificate) -> Self {
         CertificateJson {
-            subject: c.subject.clone(),
-            issuer: c.issuer.clone(),
-            start_date: c.start_date.to_string(),
-            expire_date: c.expire_date.to_string(),
-            serial_number: c.serial_number.to_string(),
+            subject: c.subject().cloned(),
+            issuer: c.issuer().cloned(),
+            start_date: c.start_date().map(|d| d.to_string()),
+            expire_date: c.expire_date().map(|d| d.to_string()),
+            serial_number: c.serial_number().cloned(),
+            subject_alt_name: c.subject_alt_name().cloned(),
+            value: c.value().map(|s| s.to_string()),
         }
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,10 @@ use crate::runner::filter::base64_decode::eval_base64_decode;
 use crate::runner::filter::base64_encode::eval_base64_encode;
 use crate::runner::filter::base64_url_safe_decode::eval_base64_url_safe_decode;
 use crate::runner::filter::base64_url_safe_encode::eval_base64_url_safe_encode;
+use crate::runner::filter::charset_decode::eval_charset_decode;
 use crate::runner::filter::count::eval_count;
 use crate::runner::filter::days_after_now::eval_days_after_now;
 use crate::runner::filter::days_before_now::eval_days_before_now;
-use crate::runner::filter::decode::eval_decode;
 use crate::runner::filter::first::eval_first;
 use crate::runner::filter::format::eval_date_format;
 use crate::runner::filter::html_escape::eval_html_escape;
@@ -92,10 +92,13 @@ pub fn eval_filter(
             eval_base64_url_safe_encode(value, source_info, in_assert)
         }
         FilterValue::Count => eval_count(value, source_info, in_assert),
+        FilterValue::CharsetDecode { encoding, .. } => {
+            eval_charset_decode(value, encoding, variables, source_info, in_assert)
+        }
         FilterValue::DaysAfterNow => eval_days_after_now(value, source_info, in_assert),
         FilterValue::DaysBeforeNow => eval_days_before_now(value, source_info, in_assert),
         FilterValue::Decode { encoding, .. } => {
-            eval_decode(value, encoding, variables, source_info, in_assert)
+            eval_charset_decode(value, encoding, variables, source_info, in_assert)
         }
         FilterValue::First => eval_first(value, source_info, in_assert),
         FilterValue::Format { fmt, .. } => {

@@ -1,3 +1,62 @@
+[8.0.0 (2026-04-24)](https://github.com/Orange-OpenSource/hurl/blob/master/CHANGELOG.md#8.0.0)
+========================================================================================================================
+
+Thanks to
+[@backtozero](https://github.com/backtozero),
+[@Hari-Oggy](https://github.com/Hari-Oggy),
+[@eyupcanakman](https://github.com/eyupcanakman),
+[@AdmiralRazorbeard](https://github.com/AdmiralRazorbeard),
+[@giorgiovilardo](https://github.com/giorgiovilardo),
+[@kikonen](https://github.com/kikonen),
+[@eirayuki](https://github.com/eirayuki),
+[@aageneralov](https://github.com/aageneralov),
+[@mateusz834](https://github.com/mateusz834),
+[@msterin](https://github.com/msterin),
+[@lillem4n](https://github.com/lillem4n),
+[@jwadolowski](https://github.com/jwadolowski),
+[@ashishajr](https://github.com/ashishajr),
+[@spiffytech](https://github.com/spiffytech),
+[@rajiv](https://github.com/rajiv),
+
+Breaking Changes:
+
+* Use CookieStore in HurlResult (crate compatibility) [#4697](https://github.com/Orange-OpenSource/hurl/issues/4697)
+* Delete deprecated --interactive option [#4712](https://github.com/Orange-OpenSource/hurl/issues/4712)
+* Replace legacy env var variable configuration HURL_foo by HURL_VARIABLE_foo [#4882](https://github.com/Orange-OpenSource/hurl/issues/4882)
+* Rename ignore-asserts to no-assert [#4889](https://github.com/Orange-OpenSource/hurl/issues/4889)
+* Using new JSONPath module implementing RFC 9535 [#4270](https://github.com/Orange-OpenSource/hurl/issues/4270)
+
+
+Enhancements:
+
+* Add raw multiline strings and remove deprecated multiline attributes [#1733](https://github.com/Orange-OpenSource/hurl/issues/1733)
+* Add --no-cookie-store option to deactivate cookie storage for one file [#2168](https://github.com/Orange-OpenSource/hurl/issues/2168)
+* Rename --noproxy to --no-proxy with backward compatible alias [#4709](https://github.com/Orange-OpenSource/hurl/issues/4709)
+* Separate color usage (ANSI codes) for standard output and standard error [#4790](https://github.com/Orange-OpenSource/hurl/issues/4790)
+* Add support for asserting/capturing TLS certificate value [#4698](https://github.com/Orange-OpenSource/hurl/issues/4698)
+* Use color/pretty when using output per request [#4970](https://github.com/Orange-OpenSource/hurl/issues/4970)
+* Support color env variables configuration [#4777](https://github.com/Orange-OpenSource/hurl/issues/4777)
+* Enhance error message for invalid filter input on filters [#4381](https://github.com/Orange-OpenSource/hurl/issues/4381)
+* Add `rawbytes` query [#4250](https://github.com/Orange-OpenSource/hurl/issues/4250)
+* Using new JSONPath module implementing RFC 9535 [#4270](https://github.com/Orange-OpenSource/hurl/issues/4270)
+* Add --verbosity option (globally and per request) [#4613](https://github.com/Orange-OpenSource/hurl/issues/4613)
+* Add Subject Alt Name (SAN) attribute for certificate assertions [#4617](https://github.com/Orange-OpenSource/hurl/issues/4617)
+
+
+Bugs Fixed:
+
+* Reject invalid header value on command line option [#4843](https://github.com/Orange-OpenSource/hurl/issues/4843)
+* Fix single quote in cookie value breaking curl output [#4557](https://github.com/Orange-OpenSource/hurl/issues/4557)
+* Add support for curl --data-raw option in hurlfmt import [#4411](https://github.com/Orange-OpenSource/hurl/issues/4411)
+* Fix truncating existing output file when response is tiny [#4576](https://github.com/Orange-OpenSource/hurl/issues/4576)
+
+
+Deprecations:
+
+* Add charsetDecode filter and make decode deprecated [#4732](https://github.com/Orange-OpenSource/hurl/issues/4732)
+
+
+
 [7.1.0 (2025-11-18)](https://github.com/Orange-OpenSource/hurl/blob/master/CHANGELOG.md#7.1.0)
 ========================================================================================================================
 

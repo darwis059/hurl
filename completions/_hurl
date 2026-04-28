@@ -28,6 +28,7 @@ _hurl() {
     '(-c --cookie-jar)'{-c,--cookie-jar}'[Write cookies to FILE after running the session]: :_files' \
     '--curl[Export each request to a list of curl commands]: :_files' \
     '--delay[Sets delay before each request (aka sleep)]: :' \
+    '--digest[Tell Hurl to use HTTP Digest authentication]' \
     '--error-format[Control the format of error messages]: :' \
     '--file-root[Set root directory to import files \[default: input file directory\]]: :' \
     '(-L --location)'{-L,--location}'[Follow redirects]' \
@@ -39,13 +40,11 @@ _hurl() {
     '--http1.1[Tell Hurl to use HTTP version 1.1]' \
     '--http2[Tell Hurl to use HTTP version 2]' \
     '--http3[Tell Hurl to use HTTP version 3]' \
-    '--ignore-asserts[Ignore asserts defined in the Hurl file]' \
     '(-i --include)'{-i,--include}'[Include the HTTP headers in the output]' \
     '(-k --insecure)'{-k,--insecure}'[Allow insecure SSL connections]' \
-    '--interactive[Turn on interactive mode]' \
     '(-4 --ipv4)'{-4,--ipv4}'[Tell Hurl to use IPv4 addresses only when resolving host names, and not for example try IPv6]' \
     '(-6 --ipv6)'{-6,--ipv6}'[Tell Hurl to use IPv6 addresses only when resolving host names, and not for example try IPv4]' \
-    '--jobs[Maximum number of parallel jobs, 0 to disable parallel execution]: :' \
+    '--jobs[Maximum number of parallel jobs, 1 to disable parallel execution]: :' \
     '--json[Output each Hurl file result to JSON]' \
     '--limit-rate[Specify the maximum transfer rate in bytes/second, for both downloads and uploads]: :' \
     '--max-filesize[Specify the maximum size in bytes of a file to download]: :' \
@@ -55,10 +54,12 @@ _hurl() {
     '(-n --netrc)'{-n,--netrc}'[Must read .netrc for username and password]' \
     '--netrc-file[Specify FILE for .netrc]: :_files' \
     '--netrc-optional[Use either .netrc or the URL]' \
+    '--no-assert[Ignore asserts defined in the Hurl file]' \
     '--no-color[Do not colorize output]' \
+    '--no-cookie-store[Do not use cookie store between requests]' \
     '--no-output[Suppress output. By default, Hurl outputs the body of the last response]' \
     '--no-pretty[Do not prettify response output]' \
-    '--noproxy[List of hosts which do not use proxy]: :' \
+    '--no-proxy[List of hosts which do not use proxy]: :' \
     '--ntlm[Tell Hurl to use NTLM authentication]' \
     '(-o --output)'{-o,--output}'[Write to FILE instead of stdout]: :_files' \
     '--parallel[Run files in parallel (default in test mode)]' \
@@ -85,8 +86,9 @@ _hurl() {
     '(-A --user-agent)'{-A,--user-agent}'[Specify the User-Agent string to send to the HTTP server]: :' \
     '*--variable[Define a variable]: :' \
     '*--variables-file[Define a properties file in which you define your variables]: :_files' \
-    '(-v --verbose)'{-v,--verbose}'[Turn on verbose]' \
-    '--very-verbose[Turn on verbose output, including HTTP response and libcurl logs]' \
+    '(-v --verbose)'{-v,--verbose}'[Turn on verbose (alias to --verbosity verbose)]' \
+    '--verbosity[Set verbosity level for debug log]: :' \
+    '--very-verbose[Turn on very verbose output, including HTTP response and libcurl logs (alias to --verbosity debug)]' \
     '--help[Print help]' \
     '--version[Print version]' \
     '*:file:_files' \

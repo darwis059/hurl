@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,8 @@ fn parse_line(s: &str) -> Result<String, String> {
     let mut command = clap::Command::new("curl")
         .arg(commands::compressed())
         .arg(commands::data())
+        .arg(commands::data_raw())
+        .arg(commands::digest())
         .arg(commands::headers())
         .arg(commands::cookies())
         .arg(commands::insecure())
@@ -261,6 +263,18 @@ cookie: name1=value1; name2=value2; name3=value3
     }
 
     #[test]
+    fn test_digest_flag() {
+        let hurl_str = r#"GET http://localhost:8000/hello
+[Options]
+digest: true
+"#;
+        assert_eq!(
+            parse_line("curl --digest http://localhost:8000/hello").unwrap(),
+            hurl_str
+        );
+    }
+
+    #[test]
     fn test_empty_cookie() {
         assert!(
             parse_line("curl http://localhost:8000/empty-cookie -b 'valid=pair' -b ''")
@@ -444,6 +458,54 @@ negotiate: true
         assert_eq!(
             parse_line("curl --negotiate http://localhost:8000/hello").unwrap(),
             hurl_str
+        );
+    }
+
+    #[test]
+    fn test_data_raw_literal() {
+        let hurl_str = r#"POST http://example.com/
+Content-Type: application/x-www-form-urlencoded
+```
+@filename
+```
+"#;
+        assert_eq!(
+            parse_line(r#"curl --data-raw @filename http://example.com/"#).unwrap(),
+            hurl_str
+        );
+    }
+
+    #[test]
+    fn test_data_raw_plain() {
+        let hurl_str = r#"POST http://localhost:8000/hello
+Content-Type: text/plain
+```
+hello
+```
+"#;
+        assert_eq!(
+            parse_line(
+                r#"curl --data-raw 'hello' -H 'Content-Type: text/plain' -X POST http://localhost:8000/hello"#
+            )
+            .unwrap(),
+            hurl_str
+        );
+    }
+
+    #[test]
+    fn test_data_raw_json() {
+        let hurl_str = r#"POST http://localhost:3000/data
+Content-Type: application/json
+```
+{"key1":"value1", "key2":"value2"}
+```
+"#;
+        assert_eq!(
+            hurl_str,
+            parse_line(
+                r#"curl --data-raw '{"key1":"value1", "key2":"value2"}' -H 'Content-Type: application/json' -X POST http://localhost:3000/data"#
+            )
+            .unwrap()
         );
     }
 }

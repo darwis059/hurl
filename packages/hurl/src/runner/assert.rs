@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -206,8 +206,8 @@ pub mod tests {
     use std::path::Path;
 
     use hurl_core::ast::{
-        Filter, FilterValue, LineTerminator, Predicate, PredicateFunc, PredicateFuncValue,
-        PredicateValue, SourceInfo, Whitespace, I64,
+        Filter, FilterValue, I64, LineTerminator, Predicate, PredicateFunc, PredicateFuncValue,
+        PredicateValue, SourceInfo, Whitespace,
     };
     use hurl_core::reader::Pos;
     use hurl_core::types::ToSource;

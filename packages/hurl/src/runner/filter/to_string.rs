@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ pub fn eval_to_string(
     match value.render() {
         Some(value) => Ok(Some(Value::String(value))),
         None => {
-            let kind = RunnerErrorKind::FilterInvalidInput(format!(
+            let kind = RunnerErrorKind::FilterInvalidInputValue(format!(
                 "{} can not be converted to a string",
                 value.repr()
             ));
@@ -79,7 +79,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             err.kind,
-            RunnerErrorKind::FilterInvalidInput(
+            RunnerErrorKind::FilterInvalidInputValue(
                 "list <[]> can not be converted to a string".to_string()
             )
         );

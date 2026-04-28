@@ -16,6 +16,8 @@ on:
         type: boolean
         default: false
 
+permissions: {}
+
 concurrency: extra-package
 
 jobs:
@@ -27,11 +29,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           persist-credentials: true
           fetch-depth: 1
           ref: ${{ github.event.inputs.set-release-version }}
+          token: ${{ secrets.HURL_BOT_TOKEN }}
       - name: Check if branch is a published release
         run: |
           if gh release list --exclude-drafts --exclude-pre-releases | grep -E "^${RELEASE_VERSION}" ; then
@@ -51,7 +54,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           persist-credentials: false
           fetch-depth: 1
@@ -69,7 +72,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           persist-credentials: true 
           fetch-depth: 1

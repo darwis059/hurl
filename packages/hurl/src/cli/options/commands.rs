@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,6 +145,14 @@ pub fn delay() -> clap::Arg {
         .num_args(1)
 }
 
+pub fn digest() -> clap::Arg {
+    clap::Arg::new("digest")
+        .long("digest")
+        .help("Tell Hurl to use HTTP Digest authentication")
+        .help_heading("HTTP options")
+        .action(clap::ArgAction::SetTrue)
+}
+
 pub fn error_format() -> clap::Arg {
     clap::Arg::new("error_format")
         .long("error-format")
@@ -188,7 +196,6 @@ pub fn from_entry() -> clap::Arg {
         .value_parser(clap::value_parser!(u32).range(1..))
         .help("Execute Hurl file from ENTRY_NUMBER (starting at 1)")
         .help_heading("Run options")
-        .conflicts_with("interactive")
         .num_args(1)
 }
 
@@ -206,7 +213,7 @@ pub fn header() -> clap::Arg {
     clap::Arg::new("header")
         .long("header")
         .short('H')
-        .value_name("HEADER")
+        .value_name("NAME:VALUE")
         .help("Pass custom header(s) to server")
         .help_heading("HTTP options")
         .num_args(1)
@@ -246,14 +253,6 @@ pub fn http3() -> clap::Arg {
         .action(clap::ArgAction::SetTrue)
 }
 
-pub fn ignore_asserts() -> clap::Arg {
-    clap::Arg::new("ignore_asserts")
-        .long("ignore-asserts")
-        .help("Ignore asserts defined in the Hurl file")
-        .help_heading("Run options")
-        .action(clap::ArgAction::SetTrue)
-}
-
 pub fn include() -> clap::Arg {
     clap::Arg::new("include")
         .long("include")
@@ -270,16 +269,6 @@ pub fn insecure() -> clap::Arg {
         .help("Allow insecure SSL connections")
         .help_heading("HTTP options")
         .action(clap::ArgAction::SetTrue)
-}
-
-pub fn interactive() -> clap::Arg {
-    clap::Arg::new("interactive")
-        .long("interactive")
-        .help("Turn on interactive mode")
-        .help_heading("Run options")
-        .conflicts_with("to_entry")
-        .action(clap::ArgAction::SetTrue)
-        .hide(true)
 }
 
 pub fn ipv4() -> clap::Arg {
@@ -305,7 +294,7 @@ pub fn jobs() -> clap::Arg {
         .long("jobs")
         .value_name("NUM")
         .value_parser(clap::value_parser!(u32).range(1..))
-        .help("Maximum number of parallel jobs, 0 to disable parallel execution")
+        .help("Maximum number of parallel jobs, 1 to disable parallel execution")
         .help_heading("Run options")
         .num_args(1)
 }
@@ -343,11 +332,11 @@ pub fn max_redirects() -> clap::Arg {
     clap::Arg::new("max_redirects")
         .long("max-redirs")
         .value_name("NUM")
-        .value_parser(clap::value_parser!(i32).range(-1..))
-        .allow_hyphen_values(true)
+        .value_parser(clap::value_parser!(i32))
         .help("Maximum number of redirects allowed, -1 for unlimited redirects [default: 50]")
         .help_heading("HTTP options")
         .num_args(1)
+        .allow_negative_numbers(true)
 }
 
 pub fn max_time() -> clap::Arg {
@@ -398,12 +387,29 @@ pub fn netrc_optional() -> clap::Arg {
         .action(clap::ArgAction::SetTrue)
 }
 
+pub fn no_assert() -> clap::Arg {
+    clap::Arg::new("no_assert")
+        .long("no-assert")
+        .help("Ignore asserts defined in the Hurl file")
+        .help_heading("Run options")
+        .action(clap::ArgAction::SetTrue)
+}
+
 pub fn no_color() -> clap::Arg {
     clap::Arg::new("no_color")
         .long("no-color")
         .help("Do not colorize output")
         .help_heading("Output options")
         .conflicts_with("color")
+        .action(clap::ArgAction::SetTrue)
+}
+
+pub fn no_cookie_store() -> clap::Arg {
+    clap::Arg::new("no_cookie_store")
+        .long("no-cookie-store")
+        .help("Do not use cookie store between requests")
+        .help_heading("HTTP options")
+        .conflicts_with("cookies_input_file")
         .action(clap::ArgAction::SetTrue)
 }
 
@@ -425,9 +431,10 @@ pub fn no_pretty() -> clap::Arg {
         .action(clap::ArgAction::SetTrue)
 }
 
-pub fn noproxy() -> clap::Arg {
-    clap::Arg::new("noproxy")
-        .long("noproxy")
+pub fn no_proxy() -> clap::Arg {
+    clap::Arg::new("no_proxy")
+        .long("no-proxy")
+        .alias("noproxy")
         .value_name("HOST(S)")
         .help("List of hosts which do not use proxy")
         .help_heading("HTTP options")
@@ -507,11 +514,11 @@ pub fn repeat() -> clap::Arg {
     clap::Arg::new("repeat")
         .long("repeat")
         .value_name("NUM")
-        .value_parser(clap::value_parser!(i32).range(-1..))
-        .allow_hyphen_values(true)
+        .value_parser(clap::value_parser!(i32))
         .help("Repeat the input files sequence NUM times, -1 for infinite loop")
         .help_heading("Run options")
         .num_args(1)
+        .allow_negative_numbers(true)
 }
 
 pub fn report_html() -> clap::Arg {
@@ -564,11 +571,11 @@ pub fn retry() -> clap::Arg {
     clap::Arg::new("retry")
         .long("retry")
         .value_name("NUM")
-        .value_parser(clap::value_parser!(i32).range(-1..))
-        .allow_hyphen_values(true)
+        .value_parser(clap::value_parser!(i32))
         .help("Maximum number of retries, 0 for no retries, -1 for unlimited retries")
         .help_heading("Run options")
         .num_args(1)
+        .allow_negative_numbers(true)
 }
 
 pub fn retry_interval() -> clap::Arg {
@@ -623,7 +630,6 @@ pub fn to_entry() -> clap::Arg {
         .value_parser(clap::value_parser!(u32).range(1..))
         .help("Execute Hurl file to ENTRY_NUMBER (starting at 1)")
         .help_heading("Run options")
-        .conflicts_with("interactive")
         .num_args(1)
 }
 
@@ -680,15 +686,25 @@ pub fn verbose() -> clap::Arg {
     clap::Arg::new("verbose")
         .long("verbose")
         .short('v')
-        .help("Turn on verbose")
+        .help("Turn on verbose (alias to --verbosity verbose)")
         .help_heading("Output options")
         .action(clap::ArgAction::SetTrue)
+}
+
+pub fn verbosity() -> clap::Arg {
+    clap::Arg::new("verbosity")
+        .long("verbosity")
+        .value_name("LEVEL")
+        .value_parser(["brief", "verbose", "debug"])
+        .help("Set verbosity level for debug log")
+        .help_heading("Output options")
+        .num_args(1)
 }
 
 pub fn very_verbose() -> clap::Arg {
     clap::Arg::new("very_verbose")
         .long("very-verbose")
-        .help("Turn on verbose output, including HTTP response and libcurl logs")
+        .help("Turn on very verbose output, including HTTP response and libcurl logs (alias to --verbosity debug)")
         .help_heading("Output options")
         .action(clap::ArgAction::SetTrue)
 }

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ pub fn predicate_value(reader: &mut Reader) -> ParseResult<PredicateValue> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Float, Number, I64};
+    use crate::ast::{Float, I64, Number};
     use crate::parser::ParseErrorKind;
     use crate::reader::Pos;
     use crate::types::ToSource;

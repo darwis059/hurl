@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::string::FromUtf8Error;
 
+use xml::EventWriter;
 use xml::attribute::Attribute;
 use xml::name::Name;
 use xml::namespace::Namespace;
 use xml::writer::{Error, XmlEvent};
-use xml::EventWriter;
 
 use crate::report::junit::xml::{Element, XmlDocument, XmlNode};
 
@@ -54,6 +54,7 @@ impl From<Error> for WriterError {
             | Error::LastElementNameNotAvailable
             | Error::EndElementNameIsNotEqualToLastStartElementName
             | Error::EndElementNameIsNotSpecified => WriterError::GenericError(value.to_string()),
+            _ => WriterError::GenericError(value.to_string()),
         }
     }
 }

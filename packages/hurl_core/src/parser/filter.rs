@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
  *
  */
 use crate::ast::{Filter, FilterValue, IntegerValue, SourceInfo, Whitespace};
-use crate::combinator::{choice, ParseError as ParseErrorTrait};
+use crate::combinator::{ParseError as ParseErrorTrait, choice};
 use crate::parser::number::integer;
 use crate::parser::primitives::{one_or_more_spaces, try_literal, zero_or_more_spaces};
 use crate::parser::query::regex_value;
 use crate::parser::string::quoted_template;
-use crate::parser::{placeholder, ParseError, ParseErrorKind, ParseResult};
+use crate::parser::{ParseError, ParseErrorKind, ParseResult, placeholder};
 use crate::reader::Reader;
 
 pub fn filters(reader: &mut Reader) -> ParseResult<Vec<(Whitespace, Filter)>> {
@@ -57,6 +57,7 @@ pub fn filter(reader: &mut Reader) -> ParseResult<Filter> {
             base64_encode_filter,
             base64_url_safe_decode_filter,
             base64_url_safe_encode_filter,
+            charset_decode_filter,
             count_filter,
             days_after_now_filter,
             days_before_now_filter,
@@ -140,6 +141,13 @@ fn days_after_now_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
 fn days_before_now_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     try_literal("daysBeforeNow", reader)?;
     Ok(FilterValue::DaysBeforeNow)
+}
+
+fn charset_decode_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("charsetDecode", reader)?;
+    let space0 = one_or_more_spaces(reader)?;
+    let encoding = quoted_template(reader)?;
+    Ok(FilterValue::CharsetDecode { space0, encoding })
 }
 
 fn decode_filter(reader: &mut Reader) -> ParseResult<FilterValue> {

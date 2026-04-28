@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +24,10 @@ mod base64_decode;
 mod base64_encode;
 mod base64_url_safe_decode;
 mod base64_url_safe_encode;
+mod charset_decode;
 mod count;
 mod days_after_now;
 mod days_before_now;
-mod decode;
 mod eval;
 mod first;
 mod format;

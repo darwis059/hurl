@@ -1,6 +1,8 @@
+use hurl_core::reader::Pos;
+
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,49 +17,22 @@
  * limitations under the License.
  *
  */
-
-use hurl_core::reader::Pos;
-
-pub type ParseResult<T> = Result<T, ParseError>;
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseError {
-    pub pos: Pos,
-    pub recoverable: bool,
-    pub kind: ParseErrorKind,
+    pos: Pos,
+    kind: ParseErrorKind,
 }
 
 impl ParseError {
-    pub fn new(pos: Pos, recoverable: bool, kind: ParseErrorKind) -> Self {
-        ParseError {
-            pos,
-            recoverable,
-            kind,
-        }
+    pub fn new(pos: Pos, kind: ParseErrorKind) -> Self {
+        ParseError { pos, kind }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParseErrorKind {
     Expecting(String),
-}
-
-impl hurl_core::combinator::ParseError for ParseError {
-    fn is_recoverable(&self) -> bool {
-        self.recoverable
-    }
-
-    fn to_recoverable(self) -> Self {
-        ParseError {
-            recoverable: true,
-            ..self
-        }
-    }
-
-    fn to_non_recoverable(self) -> Self {
-        ParseError {
-            recoverable: false,
-            ..self
-        }
-    }
+    InvalidCharacter(char),
+    InvalidEscapeSequence(String),
+    InvalidUnicodeEscape(String),
 }

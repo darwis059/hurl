@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 use hurl_core::ast::HurlFile;
 
 use crate::http::Call;
-use crate::report::html::nav::Tab;
 use crate::report::html::Testcase;
+use crate::report::html::nav::Tab;
 use crate::runner::EntryResult;
 use crate::util::redacted::Redact;
 
@@ -89,7 +89,7 @@ fn get_entry_html(entry: &EntryResult, entry_index: usize, secrets: &[&str]) -> 
             .iter()
             .map(|c| (&c.name, c.value.to_string().redact(secrets)))
             .collect::<Vec<(&String, String)>>();
-        values.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        values.sort_by_key(|a| a.0.to_lowercase());
         let table = new_table("Captures", &values);
         text.push_str(&table);
     }
@@ -131,15 +131,38 @@ fn get_call_html(
 
     // Certificate
     if let Some(certificate) = &call.response.certificate {
-        let start_date = certificate.start_date.to_string();
-        let end_date = certificate.expire_date.to_string();
-        let values = vec![
-            ("Subject", certificate.subject.as_str()),
-            ("Issuer", certificate.issuer.as_str()),
-            ("Start Date", start_date.as_str()),
-            ("Expire Date", end_date.as_str()),
-            ("Serial Number", certificate.serial_number.as_str()),
-        ];
+        let mut values = vec![];
+
+        if let Some(subject) = certificate.subject() {
+            values.push(("Subject", subject.as_str()));
+        }
+        if let Some(issuer) = certificate.issuer() {
+            values.push(("Issuer", issuer.as_str()));
+        }
+        let start_date = certificate.start_date().map(|d| d.to_string());
+        if let Some(start_date) = start_date.as_ref() {
+            values.push(("Start Date", start_date.as_str()));
+        }
+        let expire_date = certificate.expire_date().map(|d| d.to_string());
+        if let Some(expire_date) = expire_date.as_ref() {
+            values.push(("Expire Date", expire_date.as_str()));
+        }
+        if let Some(serial_number) = certificate.serial_number() {
+            values.push(("Serial Number", serial_number.as_str()));
+        }
+        if let Some(subject_alt_name) = certificate.subject_alt_name() {
+            values.push(("Subject Alt Name", subject_alt_name.as_str()));
+        }
+        let pem_display;
+        if let Some(pem) = certificate.value() {
+            // Truncate PEM for display: show first 50 chars + "..." + last 50 chars
+            if pem.len() > 100 {
+                pem_display = format!("{}...{}", &pem[..50], &pem[pem.len() - 50..]);
+            } else {
+                pem_display = pem.to_string();
+            }
+            values.push(("Value", &pem_display));
+        }
         let table = new_table("Certificate", &values);
         text.push_str(&table);
     }
@@ -150,7 +173,7 @@ fn get_call_html(
         .iter()
         .map(|h| (h.name.as_str(), h.value.redact(secrets)))
         .collect::<Vec<(&str, String)>>();
-    values.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+    values.sort_by_key(|a| a.0.to_lowercase());
     let table = new_table("Request Headers", &values);
     text.push_str(&table);
 
@@ -160,7 +183,7 @@ fn get_call_html(
         .iter()
         .map(|h| (h.name.as_str(), h.value.redact(secrets)))
         .collect::<Vec<(&str, String)>>();
-    values.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+    values.sort_by_key(|a| a.0.to_lowercase());
     let table = new_table("Response Headers", &values);
     text.push_str(&table);
 

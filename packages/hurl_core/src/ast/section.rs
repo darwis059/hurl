@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
  */
 use std::fmt;
 
-use crate::ast::option::EntryOption;
-use crate::ast::primitive::{
+use crate::types::{SourceString, ToSource};
+
+use super::core::Filter;
+use super::option::EntryOption;
+use super::primitive::{
     Base64, File, Hex, KeyValue, LineTerminator, MultilineString, Number, Placeholder, Regex,
     SourceInfo, Template, Whitespace,
 };
-use crate::ast::Filter;
-use crate::types::{SourceString, ToSource};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Section {
@@ -168,6 +169,7 @@ pub enum QueryValue {
     },
     Duration,
     Bytes,
+    RawBytes,
     Sha256,
     Md5,
     Certificate {
@@ -194,6 +196,7 @@ impl QueryValue {
             QueryValue::Variable { .. } => "variable",
             QueryValue::Duration => "duration",
             QueryValue::Bytes => "bytes",
+            QueryValue::RawBytes => "rawbytes",
             QueryValue::Sha256 => "sha256",
             QueryValue::Md5 => "md5",
             QueryValue::Certificate { .. } => "certificate",
@@ -296,6 +299,8 @@ pub enum CertificateAttributeName {
     StartDate,
     ExpireDate,
     SerialNumber,
+    SubjectAltName,
+    Value,
 }
 
 impl CertificateAttributeName {
@@ -307,6 +312,8 @@ impl CertificateAttributeName {
             CertificateAttributeName::StartDate => "Start-Date",
             CertificateAttributeName::ExpireDate => "Expire-Date",
             CertificateAttributeName::SerialNumber => "Serial-Number",
+            CertificateAttributeName::SubjectAltName => "Subject-Alt-Name",
+            CertificateAttributeName::Value => "Value",
         }
     }
 }

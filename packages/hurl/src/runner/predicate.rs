@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -815,8 +815,8 @@ mod tests {
     use std::path::Path;
 
     use hurl_core::ast::{
-        Expr, ExprKind, Float, Placeholder, Regex, Template, TemplateElement, Variable, Whitespace,
-        I64,
+        Expr, ExprKind, Float, I64, Placeholder, Regex, Template, TemplateElement, Variable,
+        Whitespace,
     };
     use hurl_core::types::ToSource;
 
@@ -859,13 +859,15 @@ mod tests {
             },
         };
 
-        assert!(eval_predicate(
-            &predicate,
-            &variables,
-            &Some(Value::Bool(true)),
-            &context_dir
-        )
-        .is_ok());
+        assert!(
+            eval_predicate(
+                &predicate,
+                &variables,
+                &Some(Value::Bool(true)),
+                &context_dir
+            )
+            .is_ok()
+        );
 
         let error = eval_predicate(
             &predicate,
@@ -887,13 +889,15 @@ mod tests {
             SourceInfo::new(Pos::new(1, 0), Pos::new(1, 0))
         );
 
-        assert!(eval_predicate(
-            &predicate,
-            &variables,
-            &Some(Value::Number(Number::Integer(1))),
-            &context_dir
-        )
-        .is_ok());
+        assert!(
+            eval_predicate(
+                &predicate,
+                &variables,
+                &Some(Value::Number(Number::Integer(1))),
+                &context_dir
+            )
+            .is_ok()
+        );
     }
 
     #[test]
@@ -1333,13 +1337,15 @@ mod tests {
         };
 
         let variables = VariableSet::new();
-        assert!(eval_predicate(
-            &predicate,
-            &variables,
-            &Some(Value::Number(Number::Integer(1))),
-            &context_dir
-        )
-        .is_ok());
+        assert!(
+            eval_predicate(
+                &predicate,
+                &variables,
+                &Some(Value::Number(Number::Integer(1))),
+                &context_dir
+            )
+            .is_ok()
+        );
 
         // startswith predicate generates a type error with an integer value
         // predicate: `not startWith "toto"`

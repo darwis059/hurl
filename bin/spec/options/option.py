@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
+
+
+@dataclass
+class OptionGroup:
+    name: Optional[str]
+    options: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -15,10 +21,14 @@ class Option:
     help: Optional[str] = None
     help_heading: Optional[str] = None
     conflict: Optional[str] = None
+    alias: Optional[str] = None
     append: bool = False
     cli_only: bool = False
+    allow_negative_numbers: bool = False
     deprecated: bool = False
     experimental: bool = False
+    config_file: bool = False
+    env_var: Optional[str] = None
 
     def __str__(self):
         s = "name: " + self.name
@@ -37,14 +47,22 @@ class Option:
             s += "\nhelp_heading: " + self.help_heading
         if self.conflict is not None:
             s += "\nconflict: " + " ".join(self.conflict)
+        if self.alias is not None:
+            s += "\nalias: " + self.alias
         if self.append:
             s += "\nmulti: append"
         if self.cli_only:
             s += "\ncli_only: true"
+        if self.allow_negative_numbers:
+            s += "\nallow_negative_numbers: true"
         if self.deprecated:
             s += "\ndeprecated: true"
         if self.experimental:
             s += "\nexperimental: true"
+        if self.config_file:
+            s += "\nconfig_file: true"
+        if self.env_var:
+            s += "\nenv_var: " + self.env_var
         s += "\n---"
         s += "\n" + self.description
         return s
@@ -60,12 +78,16 @@ class Option:
         help = None
         help_heading = None
         conflict = None
+        alias = None
         append = False
         cli_only = False
+        allow_negative_numbers = False
         deprecated = False
         description = ""
         experimental = False
         in_description = False
+        config_file = False
+        env_var = None
 
         for line in s.split("\n"):
             if line.startswith("---"):
@@ -94,6 +116,8 @@ class Option:
                     help_heading = v
                 elif key == "conflict":
                     conflict = [a.strip() for a in v.split(" ")]
+                elif key == "alias":
+                    alias = v
                 elif key == "multi":
                     if v == "append":
                         append = True
@@ -105,6 +129,15 @@ class Option:
                     else:
                         raise Exception(
                             f"{name}: Expected true or false for cli attribute"
+                        )
+                elif key == "allow_negative_numbers":
+                    if v == "true":
+                        allow_negative_numbers = True
+                    elif v == "false":
+                        allow_negative_numbers = False
+                    else:
+                        raise Exception(
+                            f"{name}: Expected true or false for allow_negative_numbers attribute"
                         )
                 elif key == "deprecated":
                     if v == "true":
@@ -124,6 +157,17 @@ class Option:
                         raise Exception(
                             f"{name}: Expected true or false for experimental attribute"
                         )
+                elif key == "config_file":
+                    if v == "true":
+                        config_file = True
+                    elif v == "false":
+                        config_file = False
+                    else:
+                        raise Exception(
+                            f"{name}: Expected true or false for config_file attribute"
+                        )
+                elif key == "env_var":
+                    env_var = v.strip()
                 else:
                     raise Exception(f"{name}: Invalid attribute " + key)
 
@@ -143,11 +187,15 @@ class Option:
             help=help,
             help_heading=help_heading,
             conflict=conflict,
+            alias=alias,
             append=append,
             cli_only=cli_only,
+            allow_negative_numbers=allow_negative_numbers,
             deprecated=deprecated,
             experimental=experimental,
             description=description.strip(),
+            config_file=config_file,
+            env_var=env_var,
         )
 
     @staticmethod

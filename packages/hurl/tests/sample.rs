@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use hurl::http::{Call, HttpVersion, Request, Response, Url};
+use hurl::http::{Call, FollowLocation, HttpVersion, Request, Response, Url};
 use hurl::runner;
 use hurl::runner::{EntryResult, HurlResult, RunnerOptionsBuilder, VariableSet};
 use hurl::util::logger::LoggerOptionsBuilder;
@@ -33,7 +33,7 @@ fn simple_sample() {
     // - check that function parameters type are public through the hurl crate
     fn check_result(result: &HurlResult) {
         assert!(result.success);
-        assert_eq!(result.cookies.len(), 0);
+        assert_eq!(result.cookie_store.len(), 0);
         assert_eq!(result.entries.len(), 1);
         assert!(result.duration.as_millis() < 1000);
     }
@@ -109,13 +109,11 @@ fn simple_sample() {
         .context_dir(&ContextDir::default())
         .cookie_input_file(None)
         .fail_fast(false)
-        .follow_location(false)
-        .ignore_asserts(false)
+        .follow_location(FollowLocation::No)
+        .no_assert(false)
         .insecure(false)
         .max_redirect(Count::Finite(10))
         .no_proxy(None)
-        .post_entry(None)
-        .pre_entry(None)
         .proxy(None)
         .retry(None)
         .retry_interval(Duration::from_secs(1))

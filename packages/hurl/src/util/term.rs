@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
  */
 //! Wrapper on standard output/error.
 use std::io;
-#[cfg(target_family = "windows")]
 use std::io::IsTerminal;
 use std::io::Write;
 
@@ -63,6 +62,11 @@ impl Stdout {
     /// Returns the buffered standard output.
     pub fn buffer(&self) -> &[u8] {
         &self.buffer
+    }
+
+    /// Returns `true` if the descriptor/handle refers to a terminal/tty, `false` otherwise.
+    pub fn is_terminal(&self) -> bool {
+        io::stdout().is_terminal()
     }
 }
 

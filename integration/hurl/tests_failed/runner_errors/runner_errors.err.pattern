@@ -73,8 +73,8 @@ error: Filter error
     |
     | GET http://localhost:8000/runner_errors
     | ...
- 46 | md5 decode "utf-8" == "café"
-    |     ^^^^^^^^^^^^^^ value can not be decoded with <utf-8> encoding
+ 46 | md5 charsetDecode "utf-8" == "café"
+    |     ^^^^^^^^^^^^^^^^^^^^^ value can not be decoded with <utf-8> encoding
     |
 
 error: Filter error
@@ -82,8 +82,8 @@ error: Filter error
     |
     | GET http://localhost:8000/runner_errors
     | ...
- 52 | bytes decode "toto" == "café"
-    |       ^^^^^^^^^^^^^ <toto> encoding is not supported
+ 52 | bytes charsetDecode "toto" == "café"
+    |       ^^^^^^^^^^^^^^^^^^^^ <toto> encoding is not supported
     |
 
 error: Filter error
@@ -108,7 +108,7 @@ error: HTTP connection
    --> tests_failed/runner_errors/runner_errors.hurl:67:5
     |
  67 | GET http://unknown
-    |     ^^^^^^^^^^^^^^ (6) Could not resolve host: unknown
+    |     ^^^^^^^^^^^^^^ (6) Could not resolve host: unknown<<<( \(Domain name not found\))?>>>
     |
 
 error: Invalid charset
@@ -263,5 +263,14 @@ error: Decompression error
     | ...
 171 | bytes count == 10
     | ^^^^^ compression unknown is not supported
+    |
+
+error: Invalid option value
+   --> tests_failed/runner_errors/runner_errors.hurl:176:9
+    |
+    | GET http://localhost:8000/runner_errors
+    | ...
+176 | header: aaa
+    |         ^^^ invalid header option value <aaa>: missing `:`
     |
 

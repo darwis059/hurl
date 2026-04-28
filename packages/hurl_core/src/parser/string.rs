@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 use crate::ast::{SourceInfo, Template};
 use crate::combinator::one_or_more;
 use crate::parser::primitives::{hex_digit, literal, try_literal};
-use crate::parser::{template, ParseError, ParseErrorKind, ParseResult};
+use crate::parser::{ParseError, ParseErrorKind, ParseResult, template};
 use crate::reader::Reader;
 
 /// Steps:
@@ -217,7 +217,7 @@ pub(crate) fn unicode(reader: &mut Reader) -> ParseResult<char> {
                 reader.cursor().pos,
                 false,
                 ParseErrorKind::Unicode,
-            ))
+            ));
         }
         Some(c) => c,
     };

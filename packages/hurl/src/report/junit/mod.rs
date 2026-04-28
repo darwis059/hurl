@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,8 +61,8 @@ use std::path::Path;
 
 pub use testcase::Testcase;
 
-use crate::report::junit::xml::{Element, XmlDocument};
 use crate::report::ReportError;
+use crate::report::junit::xml::{Element, XmlDocument};
 use crate::util::path::create_dir_all;
 
 /// Creates a JUnit from a list of `testcases`.
@@ -134,7 +134,7 @@ mod tests {
 
     use crate::http::HttpError;
     use crate::report::junit::xml::XmlDocument;
-    use crate::report::junit::{create_testsuite, Testcase};
+    use crate::report::junit::{Testcase, create_testsuite};
     use crate::runner::{EntryResult, HurlResult, RunnerError, RunnerErrorKind};
     use hurl_core::ast::SourceInfo;
     use hurl_core::input::Input;

@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  */
 use hurl_core::ast::SourceInfo;
 
-use crate::runner::{hex, RunnerError, RunnerErrorKind, Value};
+use crate::runner::{RunnerError, RunnerErrorKind, Value, hex};
 
 /// Converts bytes `value` to hexadecimal string.
 pub fn eval_to_hex(
@@ -28,7 +28,10 @@ pub fn eval_to_hex(
     match value {
         Value::Bytes(value) => Ok(Some(Value::String(hex::encode(value)))),
         v => {
-            let kind = RunnerErrorKind::FilterInvalidInput(v.kind().to_string());
+            let kind = RunnerErrorKind::FilterInvalidInputType {
+                actual: v.kind().to_string(),
+                expected: "bytes".to_string(),
+            };
             Err(RunnerError::new(source_info, kind, assert))
         }
     }
@@ -40,8 +43,8 @@ mod tests {
     use hurl_core::reader::Pos;
 
     use super::*;
-    use crate::runner::filter::eval::eval_filter;
     use crate::runner::VariableSet;
+    use crate::runner::filter::eval::eval_filter;
 
     #[test]
     fn eval_filter_to_hex_ok() {
@@ -75,7 +78,10 @@ mod tests {
         );
         assert_eq!(
             ret.unwrap_err().kind,
-            RunnerErrorKind::FilterInvalidInput("string".to_string())
+            RunnerErrorKind::FilterInvalidInputType {
+                actual: "string".to_string(),
+                expected: "bytes".to_string()
+            }
         );
     }
 }

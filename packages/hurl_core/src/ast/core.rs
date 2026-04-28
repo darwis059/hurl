@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,13 @@
  */
 use std::fmt;
 
-use crate::ast::option::EntryOption;
-use crate::ast::primitive::{
-    Bytes, KeyValue, LineTerminator, SourceInfo, Template, Whitespace, I64,
-};
-use crate::ast::section::{
-    Assert, Capture, Cookie, MultipartParam, RegexValue, Section, SectionValue,
-};
-use crate::ast::Placeholder;
 use crate::types::{SourceString, ToSource};
+
+use super::option::EntryOption;
+use super::primitive::{
+    Bytes, I64, KeyValue, LineTerminator, Placeholder, SourceInfo, Template, Whitespace,
+};
+use super::section::{Assert, Capture, Cookie, MultipartParam, RegexValue, Section, SectionValue};
 
 /// Represents Hurl AST root node.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -34,6 +32,8 @@ pub struct HurlFile {
     pub line_terminators: Vec<LineTerminator>,
 }
 
+/// Represents an entry; a request AST specification to be run and an optional response AST
+/// specification to be checked.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
     pub request: Request,
@@ -44,31 +44,6 @@ impl Entry {
     /// Returns the source information for this entry.
     pub fn source_info(&self) -> SourceInfo {
         self.request.space0.source_info
-    }
-
-    /// Returns true if the request or the response uses multilines string attributes
-    pub fn use_multiline_string_body_with_attributes(&self) -> bool {
-        if let Some(Body {
-            value: Bytes::MultilineString(multiline),
-            ..
-        }) = &self.request.body
-        {
-            if multiline.has_attributes() {
-                return true;
-            }
-        }
-        if let Some(response) = &self.response {
-            if let Some(Body {
-                value: Bytes::MultilineString(multiline),
-                ..
-            }) = &response.body
-            {
-                if multiline.has_attributes() {
-                    return true;
-                }
-            }
-        }
-        false
     }
 }
 
@@ -303,6 +278,10 @@ pub enum FilterValue {
     Base64Encode,
     Base64UrlSafeDecode,
     Base64UrlSafeEncode,
+    CharsetDecode {
+        space0: Whitespace,
+        encoding: Template,
+    },
     Count,
     DaysAfterNow,
     DaysBeforeNow,
@@ -382,6 +361,7 @@ impl FilterValue {
             FilterValue::Base64Encode => "base64Encode",
             FilterValue::Base64UrlSafeDecode => "base64UrlSafeDecode",
             FilterValue::Base64UrlSafeEncode => "base64UrlSafeEncode",
+            FilterValue::CharsetDecode { .. } => "charsetDecode",
             FilterValue::Count => "count",
             FilterValue::DaysAfterNow => "daysAfterNow",
             FilterValue::DaysBeforeNow => "daysBeforeNow",

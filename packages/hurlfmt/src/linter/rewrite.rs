@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
  */
 use hurl_core::ast::{
     Assert, Base64, Body, BooleanOption, Bytes, Capture, CertificateAttributeName, Comment, Cookie,
-    CookiePath, CountOption, DurationOption, Entry, EntryOption, File, FilenameParam,
-    FilenameValue, FilterValue, Hex, HurlFile, IntegerValue, JsonValue, KeyValue, LineTerminator,
-    Method, MultilineString, MultipartParam, NaturalOption, Number, OptionKind, Placeholder,
-    Predicate, PredicateFuncValue, PredicateValue, Query, QueryValue, Regex, RegexValue, Request,
-    Response, Section, SectionValue, StatusValue, Template, VariableDefinition, VariableValue,
-    VersionValue, I64, U64,
+    CookiePath, CountOption, Duration, DurationOption, Entry, EntryOption, File, FilenameParam,
+    FilenameValue, FilterValue, Hex, HurlFile, I64, IntegerValue, JsonValue, KeyValue,
+    LineTerminator, Method, MultilineString, MultipartParam, NaturalOption, Number, OptionKind,
+    Placeholder, Predicate, PredicateFuncValue, PredicateValue, Query, QueryValue, Regex,
+    RegexValue, Request, Response, Section, SectionValue, StatusValue, Template, U64,
+    VariableDefinition, VariableValue, VerbosityOption, VersionValue,
 };
-use hurl_core::types::{Count, Duration, DurationUnit, ToSource};
+use hurl_core::types::{Count, DurationUnit, ToSource};
 
 /// Lint a parsed `HurlFile` to a string.
 pub fn lint_hurl_file(file: &HurlFile) -> String {
@@ -249,6 +249,10 @@ impl Lint for FilterValue {
         let mut s = String::new();
         s.push_str(self.identifier());
         match self {
+            FilterValue::CharsetDecode { encoding, .. } => {
+                s.push(' ');
+                s.push_str(&encoding.lint());
+            }
             FilterValue::Decode { encoding, .. } => {
                 s.push(' ');
                 s.push_str(&encoding.lint());
@@ -466,6 +470,7 @@ impl Lint for OptionKind {
                 lint_duration_option(value, DurationUnit::MilliSecond)
             }
             OptionKind::Delay(value) => lint_duration_option(value, DurationUnit::MilliSecond),
+            OptionKind::Digest(value) => value.lint(),
             OptionKind::Header(value) => value.lint(),
             OptionKind::Http10(value) => value.lint(),
             OptionKind::Http11(value) => value.lint(),
@@ -499,6 +504,7 @@ impl Lint for OptionKind {
             OptionKind::User(value) => value.lint(),
             OptionKind::Variable(value) => value.lint(),
             OptionKind::Verbose(value) => value.lint(),
+            OptionKind::Verbosity(value) => value.lint(),
             OptionKind::VeryVerbose(value) => value.lint(),
         };
         s.push_str(&value);
@@ -541,6 +547,7 @@ impl Lint for Query {
             }
             QueryValue::Duration => {}
             QueryValue::Bytes => {}
+            QueryValue::RawBytes => {}
             QueryValue::Sha256 => {}
             QueryValue::Md5 => {}
             QueryValue::Certificate { attribute_name, .. } => {
@@ -824,6 +831,12 @@ impl Lint for VariableValue {
 impl Lint for VersionValue {
     fn lint(&self) -> String {
         self.to_source().to_string()
+    }
+}
+
+impl Lint for VerbosityOption {
+    fn lint(&self) -> String {
+        self.to_string()
     }
 }
 

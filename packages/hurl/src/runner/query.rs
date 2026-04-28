@@ -1,6 +1,6 @@
 /*
  * Hurl (https://hurl.dev)
- * Copyright (C) 2025 Orange
+ * Copyright (C) 2026 Orange
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ pub fn eval_query(
         QueryValue::Variable { name, .. } => eval_query_variable(name, variables),
         QueryValue::Duration => eval_query_duration(last_response),
         QueryValue::Bytes => eval_query_bytes(last_response, query.source_info),
+        QueryValue::RawBytes => eval_query_rawbytes(last_response),
         QueryValue::Sha256 => eval_query_sha256(last_response, query.source_info),
         QueryValue::Md5 => eval_query_md5(last_response, query.source_info),
         QueryValue::Certificate {
@@ -191,7 +192,7 @@ fn parse_cache_xml<'cache>(
                 query_source_info,
                 RunnerErrorKind::Http(e),
                 false,
-            ))
+            ));
         }
     };
     let format = if response.is_html() {
@@ -244,7 +245,7 @@ fn parse_cache_json<'cache>(
                 query_source_info,
                 RunnerErrorKind::Http(e),
                 false,
-            ))
+            ));
         }
     };
     let json = match serde_json::from_str(&text) {
@@ -278,7 +279,7 @@ fn eval_query_regex(
                 query_source_info,
                 RunnerErrorKind::Http(inner),
                 false,
-            ))
+            ));
         }
     };
     let re = match regex {
@@ -291,7 +292,7 @@ fn eval_query_regex(
                         t.source_info,
                         RunnerErrorKind::InvalidRegex,
                         false,
-                    ))
+                    ));
                 }
             }
         }
@@ -336,6 +337,11 @@ fn eval_query_bytes(response: &Response, query_source_info: SourceInfo) -> Query
             false,
         )),
     }
+}
+
+/// Evaluates the HTTP `response` body as raw bytes (before content decoding).
+fn eval_query_rawbytes(response: &Response) -> QueryResult {
+    Ok(Some(Value::Bytes(response.body.clone())))
 }
 
 /// Evaluates the SHA-256 hash of the HTTP `response` body bytes.
@@ -384,15 +390,25 @@ fn eval_query_certificate(
 ) -> QueryResult {
     if let Some(certificate) = &response.certificate {
         let value = match certificate_attribute {
-            CertificateAttributeName::Subject => Value::String(certificate.subject.clone()),
-            CertificateAttributeName::Issuer => Value::String(certificate.issuer.clone()),
-            CertificateAttributeName::StartDate => Value::Date(certificate.start_date),
-            CertificateAttributeName::ExpireDate => Value::Date(certificate.expire_date),
-            CertificateAttributeName::SerialNumber => {
-                Value::String(certificate.serial_number.clone())
+            CertificateAttributeName::Subject => {
+                certificate.subject().map(|it| Value::String(it.clone()))
+            }
+            CertificateAttributeName::Issuer => {
+                certificate.issuer().map(|it| Value::String(it.clone()))
+            }
+            CertificateAttributeName::StartDate => certificate.start_date().map(Value::Date),
+            CertificateAttributeName::ExpireDate => certificate.expire_date().map(Value::Date),
+            CertificateAttributeName::SerialNumber => certificate
+                .serial_number()
+                .map(|it| Value::String(it.clone())),
+            CertificateAttributeName::SubjectAltName => certificate
+                .subject_alt_name()
+                .map(|it| Value::String(it.clone())),
+            CertificateAttributeName::Value => {
+                certificate.value().map(|it| Value::String(it.to_string()))
             }
         };
-        Ok(Some(value))
+        Ok(value)
     } else {
         Ok(None)
     }
@@ -1432,6 +1448,27 @@ pub mod tests {
         );
     }
 
+    #[test]
+    fn test_query_rawbytes() {
+        let variables = VariableSet::new();
+        let mut cache = BodyCache::new();
+
+        assert_eq!(
+            eval_query(
+                &Query {
+                    source_info: SourceInfo::new(Pos::new(0, 0), Pos::new(0, 0)),
+                    value: QueryValue::RawBytes,
+                },
+                &variables,
+                &[&http::hello_http_response()],
+                &mut cache,
+            )
+            .unwrap()
+            .unwrap(),
+            Value::Bytes(String::into_bytes(String::from("Hello World!")))
+        );
+    }
+
     fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
         (0..s.len())
             .step_by(2)
@@ -1468,24 +1505,36 @@ pub mod tests {
 
     #[test]
     fn test_query_certificate() {
-        assert!(eval_query_certificate(
-            &Response {
-                ..default_response()
-            },
-            CertificateAttributeName::Subject
-        )
-        .unwrap()
-        .is_none());
+        assert!(
+            eval_query_certificate(
+                &Response {
+                    ..default_response()
+                },
+                CertificateAttributeName::Subject
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        let subject = Some("A=B, C=D".to_string());
+        let issuer = Some(String::new());
+        let start_date = Default::default();
+        let expire_date = Default::default();
+        let serial_number = Some(String::new());
+        let subject_alt_name = Some(String::new());
+        let certificate = http::Certificate::new(
+            subject,
+            issuer,
+            start_date,
+            expire_date,
+            serial_number,
+            subject_alt_name,
+            None,
+        );
         assert_eq!(
             eval_query_certificate(
                 &Response {
-                    certificate: Some(http::Certificate {
-                        subject: "A=B, C=D".to_string(),
-                        issuer: String::new(),
-                        start_date: Default::default(),
-                        expire_date: Default::default(),
-                        serial_number: String::new()
-                    }),
+                    certificate: Some(certificate),
                     ..default_response()
                 },
                 CertificateAttributeName::Subject
