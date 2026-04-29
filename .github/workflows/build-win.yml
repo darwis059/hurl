@@ -63,8 +63,6 @@ jobs:
 
   package-windows-x64:
     runs-on: windows-latest
-    env:
-      VCPKGRS_DYNAMIC: 1
     steps:
       - name: Set git to use LF
         run: |
