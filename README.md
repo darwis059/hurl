@@ -787,6 +787,7 @@ certificate "Expire-Date" daysAfterNow > 15
 certificate "Serial-Number" matches /[\da-f]+/
 certificate "Subject-Alt-Name" contains "DNS:example.org"
 certificate "Subject-Alt-Name" split "," count == 2
+certificate "Value" startsWith "-----BEGIN CERTIFICATE-----"
 ```
 
 [Doc](https://hurl.dev/docs/asserting-response.html#ssl-certificate-assert)
@@ -1585,7 +1586,7 @@ Precompiled binary (depending on libc >=2.35) is available at [Hurl latest GitHu
 
 ```shell
 $ INSTALL_DIR=/tmp
-$ VERSION=8.0.0
+$ VERSION=8.0.1
 $ curl --silent --location https://github.com/Orange-OpenSource/hurl/releases/download/$VERSION/hurl-$VERSION-x86_64-unknown-linux-gnu.tar.gz | tar xvz -C $INSTALL_DIR
 $ export PATH=$INSTALL_DIR/hurl-$VERSION-x86_64-unknown-linux-gnu/bin:$PATH
 ```
@@ -1595,7 +1596,7 @@ $ export PATH=$INSTALL_DIR/hurl-$VERSION-x86_64-unknown-linux-gnu/bin:$PATH
 For Debian >=12 / Ubuntu 22.04 and 24.04, Hurl can be installed using a binary .deb file provided in each Hurl release.
 
 ```shell
-$ VERSION=8.0.0
+$ VERSION=8.0.1
 $ curl --location --remote-name https://github.com/Orange-OpenSource/hurl/releases/download/$VERSION/hurl_${VERSION}_amd64.deb
 $ sudo apt update && sudo apt install ./hurl_${VERSION}_amd64.deb
 ```
@@ -1603,7 +1604,7 @@ $ sudo apt update && sudo apt install ./hurl_${VERSION}_amd64.deb
 For Ubuntu >=22.04, Hurl can be installed from `ppa:lepapareil/hurl`
 
 ```shell
-$ VERSION=8.0.0
+$ VERSION=8.0.1
 $ sudo apt-add-repository -y ppa:lepapareil/hurl
 $ sudo apt install hurl="${VERSION}"*
 ```
@@ -1790,7 +1791,7 @@ Please follow the [contrib on Windows section].
 [star Hurl on GitHub]: https://github.com/Orange-OpenSource/hurl/stargazers
 [HTML]: /docs/standalone/hurl-8.0.0.html
 [PDF]: /docs/standalone/hurl-8.0.0.pdf
-[Markdown]: https://hurl.dev/docs/standalone/hurl-8.0.0.html
+[Markdown]: /docs/standalone/hurl-8.0.0.md
 [JSON body]: https://hurl.dev/docs/request.html#json-body
 [XML body]: https://hurl.dev/docs/request.html#xml-body
 [XML multiline string body]: https://hurl.dev/docs/request.html#multiline-string-body
