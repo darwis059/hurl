@@ -1,14 +1,14 @@
 name: check
 on:
-  pull_request:
+  # pull_request:
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      branch:
-        description: "ref branch for this workflow"
-        default: "master"
-        required: true
-        type: string
+  # workflow_call:
+  #   inputs:
+  #     branch:
+  #       description: "ref branch for this workflow"
+  #       default: "master"
+  #       required: true
+  #       type: string
 
 permissions: {}
 
