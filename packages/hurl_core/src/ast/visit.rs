@@ -515,6 +515,7 @@ pub fn walk_filter<V: Visitor>(visitor: &mut V, filter: &Filter) {
         FilterValue::ToFloat => {}
         FilterValue::ToHex => {}
         FilterValue::ToInt => {}
+        FilterValue::ToBool => {}
         FilterValue::ToString => {}
         FilterValue::UrlDecode => {}
         FilterValue::UrlEncode => {}

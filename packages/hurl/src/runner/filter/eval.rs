@@ -42,6 +42,7 @@ use crate::runner::filter::to_date::eval_to_date;
 use crate::runner::filter::to_float::eval_to_float;
 use crate::runner::filter::to_hex::eval_to_hex;
 use crate::runner::filter::to_int::eval_to_int;
+use crate::runner::filter::to_bool::eval_to_bool;
 use crate::runner::filter::to_string::eval_to_string;
 use crate::runner::filter::url_decode::eval_url_decode;
 use crate::runner::filter::url_encode::eval_url_encode;
@@ -161,6 +162,7 @@ pub fn eval_filter(
         FilterValue::ToFloat => eval_to_float(value, source_info, in_assert),
         FilterValue::ToHex => eval_to_hex(value, source_info, in_assert),
         FilterValue::ToInt => eval_to_int(value, source_info, in_assert),
+        FilterValue::ToBool => eval_to_bool(value, source_info, in_assert),
         FilterValue::ToString => eval_to_string(value, source_info, in_assert),
         FilterValue::UrlDecode => eval_url_decode(value, source_info, in_assert),
         FilterValue::UrlEncode => eval_url_encode(value, source_info, in_assert),

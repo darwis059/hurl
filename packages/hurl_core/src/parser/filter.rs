@@ -82,6 +82,7 @@ pub fn filter(reader: &mut Reader) -> ParseResult<Filter> {
             to_float_filter,
             to_hex_filter,
             to_int_filter,
+            to_bool_filter,
             to_string_filter,
             url_decode_filter,
             url_encode_filter,
@@ -298,6 +299,11 @@ fn to_hex_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
 fn to_int_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     try_literal("toInt", reader)?;
     Ok(FilterValue::ToInt)
+}
+
+fn to_bool_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("toBool", reader)?;
+    Ok(FilterValue::ToBool)
 }
 
 fn to_string_filter(reader: &mut Reader) -> ParseResult<FilterValue> {

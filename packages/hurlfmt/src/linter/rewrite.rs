@@ -330,6 +330,7 @@ impl Lint for FilterValue {
             | FilterValue::ToFloat
             | FilterValue::ToHex
             | FilterValue::ToInt
+            | FilterValue::ToBool
             | FilterValue::ToString
             | FilterValue::UrlDecode
             | FilterValue::UrlEncode
