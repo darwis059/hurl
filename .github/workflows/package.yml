@@ -1,7 +1,7 @@
 name: package
 
 on:
-  pull_request:
+  # pull_request:
   workflow_dispatch:
   workflow_call:
     inputs:
