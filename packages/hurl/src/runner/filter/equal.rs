@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  */
-use hurl_core::ast::{SourceInfo, Template};
+use hurl_core::ast::{SourceInfo, Template, TemplateElement};
 
 use crate::runner::template::eval_template;
 use crate::runner::{RunnerError, RunnerErrorKind, Value, VariableSet};
@@ -29,9 +29,16 @@ pub fn eval_equal(
     other: &Template,
 ) -> Result<Option<Value>, RunnerError> {
     match value {
+        // Value::String(s) => {
+        //     let other = eval_template(other, variables)?;
+        //     let result = s == &other;
+        //     Ok(Some(Value::Bool(result)))
+        // }
         Value::String(s) => {
-            let other = eval_template(other, variables)?;
-            let result = s == &other;
+            let result = match other.elements.as_slice() {
+                [TemplateElement::String { value, .. }] => s == value,
+                _ => s == &eval_template(other, variables)?,
+            };
             Ok(Some(Value::Bool(result)))
         }
         v => {
@@ -44,50 +51,63 @@ pub fn eval_equal(
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use hurl_core::ast::{Filter, FilterValue, SourceInfo, Template, TemplateElement, Whitespace};
-//     use hurl_core::reader::Pos;
-//     use hurl_core::types::ToSource;
+// optimization: if the template is a single string
+// use hurl_core::ast::{SourceInfo, Template, TemplateElement};
 
-//     use crate::runner::filter::eval::eval_filter;
-//     use crate::runner::{Value, VariableSet};
-
-//     #[test]
-//     fn eval_filter_split() {
-//         let variables = VariableSet::new();
-//         let filter = Filter {
-//             source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 1)),
-//             value: FilterValue::Split {
-//                 sep: Template::new(
-//                     Some('"'),
-//                     vec![TemplateElement::String {
-//                         value: ",".to_string(),
-//                         source: ",".to_source(),
-//                     }],
-//                     SourceInfo::new(Pos::new(0, 0), Pos::new(0, 0)),
-//                 ),
-//                 space0: Whitespace {
-//                     value: String::new(),
-//                     source_info: SourceInfo::new(Pos::new(0, 0), Pos::new(0, 0)),
-//                 },
-//             },
-//         };
-
-//         assert_eq!(
-//             eval_filter(
-//                 &filter,
-//                 &Value::String("1,2,3".to_string()),
-//                 &variables,
-//                 false
-//             )
-//             .unwrap()
-//             .unwrap(),
-//             Value::List(vec![
-//                 Value::String("1".to_string()),
-//                 Value::String("2".to_string()),
-//                 Value::String("3".to_string()),
-//             ])
-//         );
-//     }
+// Value::String(s) => {
+//     let result = match other.elements.as_slice() {
+//         [TemplateElement::String { value, .. }] => s == value,
+//         _ => s == &eval_template(other, variables)?,
+//     };
+//     Ok(Some(Value::Bool(result)))
 // }
+
+#[cfg(test)]
+mod tests {
+    use hurl_core::ast::{SourceInfo, Template, TemplateElement};
+    use hurl_core::reader::Pos;
+    use hurl_core::types::ToSource;
+
+    use super::eval_equal;
+    use crate::runner::{Value, VariableSet};
+
+    fn template(value: &str) -> Template {
+        Template::new(
+            Some('"'),
+            vec![TemplateElement::String {
+                value: value.to_string(),
+                source: value.to_source(),
+            }],
+            SourceInfo::new(Pos::new(0, 0), Pos::new(0, 0)),
+        )
+    }
+
+    #[test]
+    fn eval_equal_strings() {
+        let variables = VariableSet::new();
+        let source_info = SourceInfo::new(Pos::new(1, 1), Pos::new(1, 1));
+
+        assert_eq!(
+            eval_equal(
+                &Value::String("foo".to_string()),
+                &variables,
+                source_info,
+                false,
+                &template("foo"),
+            )
+            .unwrap(),
+            Some(Value::Bool(true))
+        );
+        assert_eq!(
+            eval_equal(
+                &Value::String("foo".to_string()),
+                &variables,
+                source_info,
+                false,
+                &template("bar"),
+            )
+            .unwrap(),
+            Some(Value::Bool(false))
+        );
+    }
+}
