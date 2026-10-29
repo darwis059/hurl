@@ -77,6 +77,7 @@ pub fn filter(reader: &mut Reader) -> ParseResult<Filter> {
             replace_regex_filter,
             replace_filter,
             split_filter,
+            equal_filter,
             to_date_filter,
             to_float_filter,
             to_hex_filter,
@@ -268,6 +269,13 @@ fn split_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
     let space0 = one_or_more_spaces(reader)?;
     let sep = quoted_template(reader).map_err(|e| e.to_non_recoverable())?;
     Ok(FilterValue::Split { space0, sep })
+}
+
+fn equal_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
+    try_literal("equal", reader)?;
+    let space0 = one_or_more_spaces(reader)?;
+    let other = quoted_template(reader).map_err(|e| e.to_non_recoverable())?;
+    Ok(FilterValue::Equal { space0, other })
 }
 
 fn to_date_filter(reader: &mut Reader) -> ParseResult<FilterValue> {
